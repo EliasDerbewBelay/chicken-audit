@@ -17,15 +17,20 @@ const dailyLogSchema = z.object({
 // GET /daily-logs — return all logs newest first, joined with user name
 router.get("/", requireAuth, async (req, res) => {
   try {
+    const isOwner = req.user.role === "owner";
+    const whereClause = isOwner ? "" : "where dl.logged_by = $1";
+    const params = isOwner ? [] : [req.user.id];
+
     const { rows } = await pool.query(`
       select
         dl.*,
         u.full_name as logged_by_name
       from daily_logs dl
       join users u on u.id = dl.logged_by
+      ${whereClause}
       order by dl.log_date desc
       limit 60
-    `);
+    `, params);
     res.json(rows);
   } catch (err) {
     console.error(err);

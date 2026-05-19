@@ -17,13 +17,18 @@ const saleSchema = z.object({
 // GET /sales
 router.get("/", requireAuth, async (req, res) => {
   try {
+    const isOwner = req.user.role === "owner";
+    const whereClause = isOwner ? "" : "where s.recorded_by = $1";
+    const params = isOwner ? [] : [req.user.id];
+
     const { rows } = await pool.query(`
       select s.*, u.full_name as recorded_by_name
       from sales s
       join users u on u.id = s.recorded_by
+      ${whereClause}
       order by s.sale_date desc, s.created_at desc
       limit 100
-    `);
+    `, params);
     res.json(rows);
   } catch (err) {
     console.error(err);

@@ -16,13 +16,18 @@ const expenseSchema = z.object({
 // GET /expenses
 router.get("/", requireAuth, async (req, res) => {
   try {
+    const isOwner = req.user.role === "owner";
+    const whereClause = isOwner ? "" : "where e.recorded_by = $1";
+    const params = isOwner ? [] : [req.user.id];
+
     const { rows } = await pool.query(`
       select e.*, u.full_name as recorded_by_name
       from expenses e
       join users u on u.id = e.recorded_by
+      ${whereClause}
       order by e.expense_date desc, e.created_at desc
       limit 100
-    `);
+    `, params);
     res.json(rows);
   } catch (err) {
     console.error(err);

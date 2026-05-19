@@ -122,53 +122,55 @@ router.get("/", requireAuth, async (req, res) => {
     ] = await Promise.all([
       // Eggs today
       pool.query(
-        "select eggs_collected from daily_logs where log_date = $1",
-        [today]
+        `select coalesce(sum(eggs_collected), 0) as eggs_collected, count(id) as count_logs from daily_logs where log_date = $1 ${isOwner ? '' : 'and logged_by = $2'}`,
+        isOwner ? [today] : [today, userId]
       ),
       // Eggs yesterday
       pool.query(
-        "select eggs_collected from daily_logs where log_date = $1",
-        [yesterday]
+        `select coalesce(sum(eggs_collected), 0) as eggs_collected from daily_logs where log_date = $1 ${isOwner ? '' : 'and logged_by = $2'}`,
+        isOwner ? [yesterday] : [yesterday, userId]
       ),
       // Revenue this month
       pool.query(
-        "select coalesce(sum(amount_etb), 0) as total from sales where sale_date >= $1",
-        [monthStart]
+        `select coalesce(sum(amount_etb), 0) as total from sales where sale_date >= $1 ${isOwner ? '' : 'and recorded_by = $2'}`,
+        isOwner ? [monthStart] : [monthStart, userId]
       ),
       // Expenses this month
       pool.query(
-        "select coalesce(sum(amount_etb), 0) as total from expenses where expense_date >= $1",
-        [monthStart]
+        `select coalesce(sum(amount_etb), 0) as total from expenses where expense_date >= $1 ${isOwner ? '' : 'and recorded_by = $2'}`,
+        isOwner ? [monthStart] : [monthStart, userId]
       ),
       // Deaths this month
       pool.query(
-        "select coalesce(sum(deaths), 0) as total from daily_logs where log_date >= $1",
-        [monthStart]
+        `select coalesce(sum(deaths), 0) as total from daily_logs where log_date >= $1 ${isOwner ? '' : 'and logged_by = $2'}`,
+        isOwner ? [monthStart] : [monthStart, userId]
       ),
       // All-time deaths (for flock count)
       pool.query(
-        "select coalesce(sum(deaths), 0) as total from daily_logs"
+        `select coalesce(sum(deaths), 0) as total from daily_logs ${isOwner ? '' : 'where logged_by = $1'}`,
+        isOwner ? [] : [userId]
       ),
       // Last 7 days egg production
       pool.query(`
         select
           gs.day::date as date,
-          coalesce(dl.eggs_collected, 0) as count
+          coalesce(sum(dl.eggs_collected), 0) as count
         from generate_series(
           current_date - interval '6 days',
           current_date,
           interval '1 day'
         ) as gs(day)
-        left join daily_logs dl on dl.log_date = gs.day::date
+        left join daily_logs dl on dl.log_date = gs.day::date ${isOwner ? '' : 'and dl.logged_by = $1'}
+        group by gs.day
         order by gs.day
-      `),
+      `, isOwner ? [] : [userId]),
       pool.query(recentQuery, recentParams),
     ]);
 
     res.json({
-      eggs_today: todayLog.rows[0]?.eggs_collected ?? 0,
-      eggs_yesterday: yesterdayLog.rows[0]?.eggs_collected ?? 0,
-      today_log_submitted: todayLog.rows.length > 0,
+      eggs_today: Number(todayLog.rows[0]?.eggs_collected ?? 0),
+      eggs_yesterday: Number(yesterdayLog.rows[0]?.eggs_collected ?? 0),
+      today_log_submitted: Number(todayLog.rows[0]?.count_logs ?? 0) > 0,
       revenue_month: Number(revenueMonth.rows[0].total),
       expenses_month: Number(expensesMonth.rows[0].total),
       deaths_month: Number(deathsMonth.rows[0].total),

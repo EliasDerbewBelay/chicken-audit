@@ -15,13 +15,18 @@ const healthSchema = z.object({
 // GET /health
 router.get("/", requireAuth, async (req, res) => {
   try {
+    const isOwner = req.user.role === "owner";
+    const whereClause = isOwner ? "" : "where h.recorded_by = $1";
+    const params = isOwner ? [] : [req.user.id];
+
     const { rows } = await pool.query(`
       select h.*, u.full_name as recorded_by_name
       from health_events h
       join users u on u.id = h.recorded_by
+      ${whereClause}
       order by h.event_date desc, h.created_at desc
       limit 100
-    `);
+    `, params);
     res.json(rows);
   } catch (err) {
     console.error(err);
