@@ -13,6 +13,102 @@ router.get("/", requireAuth, async (req, res) => {
     const monthStart = today.slice(0, 7) + "-01";
     const startingFlock = Number(process.env.STARTING_FLOCK ?? 200);
 
+    const isOwner = req.user.role === "owner";
+    const userId = req.user.id;
+    const limit = isOwner ? 10 : 7;
+
+    const recentQuery = isOwner
+      ? `
+        select s.id, 'sale' as type,
+               concat(s.quantity::int, ' ', s.type) as description,
+               s.amount_etb as amount,
+               u.full_name as recorded_by_name,
+               s.sale_date as date,
+               s.recorded_by
+        from sales s join users u on u.id = s.recorded_by
+
+        union all
+
+        select e.id, 'expense' as type,
+               e.category as description,
+               e.amount_etb as amount,
+               u.full_name as recorded_by_name,
+               e.expense_date as date,
+               e.recorded_by
+        from expenses e join users u on u.id = e.recorded_by
+
+        union all
+
+        select dl.id, 'log' as type,
+               concat(dl.eggs_collected, ' eggs collected') as description,
+               null as amount,
+               u.full_name as recorded_by_name,
+               dl.log_date as date,
+               dl.logged_by as recorded_by
+        from daily_logs dl join users u on u.id = dl.logged_by
+
+        union all
+
+        select h.id, 'health' as type,
+               concat(h.event_type, ': ', h.details) as description,
+               null as amount,
+               u.full_name as recorded_by_name,
+               h.event_date as date,
+               h.recorded_by
+        from health_events h join users u on u.id = h.recorded_by
+
+        order by date desc
+        limit $1
+      `
+      : `
+        select s.id, 'sale' as type,
+               concat(s.quantity::int, ' ', s.type) as description,
+               s.amount_etb as amount,
+               u.full_name as recorded_by_name,
+               s.sale_date as date,
+               s.recorded_by
+        from sales s join users u on u.id = s.recorded_by
+        where s.recorded_by = $1
+
+        union all
+
+        select e.id, 'expense' as type,
+               e.category as description,
+               e.amount_etb as amount,
+               u.full_name as recorded_by_name,
+               e.expense_date as date,
+               e.recorded_by
+        from expenses e join users u on u.id = e.recorded_by
+        where e.recorded_by = $1
+
+        union all
+
+        select dl.id, 'log' as type,
+               concat(dl.eggs_collected, ' eggs collected') as description,
+               null as amount,
+               u.full_name as recorded_by_name,
+               dl.log_date as date,
+               dl.logged_by as recorded_by
+        from daily_logs dl join users u on u.id = dl.logged_by
+        where dl.logged_by = $1
+
+        union all
+
+        select h.id, 'health' as type,
+               concat(h.event_type, ': ', h.details) as description,
+               null as amount,
+               u.full_name as recorded_by_name,
+               h.event_date as date,
+               h.recorded_by
+        from health_events h join users u on u.id = h.recorded_by
+        where h.recorded_by = $1
+
+        order by date desc
+        limit $2
+      `;
+
+    const recentParams = isOwner ? [limit] : [userId, limit];
+
     // Run all queries in parallel
     const [
       todayLog,
@@ -66,50 +162,13 @@ router.get("/", requireAuth, async (req, res) => {
         left join daily_logs dl on dl.log_date = gs.day::date
         order by gs.day
       `),
-      // Recent 10 entries across all tables (union)
-      pool.query(`
-        select id, 'sale' as type,
-               concat(quantity::int, ' ', type) as description,
-               amount_etb as amount,
-               u.full_name as recorded_by_name,
-               sale_date as date
-        from sales s join users u on u.id = s.recorded_by
-
-        union all
-
-        select id, 'expense' as type,
-               category as description,
-               amount_etb as amount,
-               u.full_name as recorded_by_name,
-               expense_date as date
-        from expenses e join users u on u.id = e.recorded_by
-
-        union all
-
-        select id, 'log' as type,
-               concat(eggs_collected, ' eggs collected') as description,
-               null as amount,
-               u.full_name as recorded_by_name,
-               log_date as date
-        from daily_logs dl join users u on u.id = dl.logged_by
-
-        union all
-
-        select id, 'health' as type,
-               concat(event_type, ': ', details) as description,
-               null as amount,
-               u.full_name as recorded_by_name,
-               event_date as date
-        from health_events h join users u on u.id = h.recorded_by
-
-        order by date desc
-        limit 10
-      `),
+      pool.query(recentQuery, recentParams),
     ]);
 
     res.json({
       eggs_today: todayLog.rows[0]?.eggs_collected ?? 0,
       eggs_yesterday: yesterdayLog.rows[0]?.eggs_collected ?? 0,
+      today_log_submitted: todayLog.rows.length > 0,
       revenue_month: Number(revenueMonth.rows[0].total),
       expenses_month: Number(expensesMonth.rows[0].total),
       deaths_month: Number(deathsMonth.rows[0].total),

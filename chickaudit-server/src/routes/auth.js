@@ -41,7 +41,7 @@ router.post("/login", validate(loginSchema), async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, full_name: user.full_name, role: user.role },
+      user: { id: user.id, full_name: user.full_name, role: user.role, email: user.email },
     });
   } catch (err) {
     console.error(err);

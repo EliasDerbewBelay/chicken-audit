@@ -2,4 +2,3 @@ node_modules/
 .env
 *.log
 local_db/
-local_db/
