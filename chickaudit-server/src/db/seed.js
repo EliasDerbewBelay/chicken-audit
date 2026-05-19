@@ -8,7 +8,7 @@
  */
 
 require("dotenv").config();
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const pool = require("./pool");
 
 const USERS = [
