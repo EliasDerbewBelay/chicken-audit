@@ -9,7 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toaster";
 import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
@@ -36,6 +42,7 @@ export default function SalesPage() {
   // Modals/Edit state
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
@@ -47,8 +54,9 @@ export default function SalesPage() {
     return sales.filter((sale) => {
       const matchesSearch =
         searchTerm === "" ||
-        (sale.buyer && sale.buyer.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (sale.recorded_by_name && sale.recorded_by_name.toLowerCase().includes(searchTerm.toLowerCase()));
+        (sale.buyer &&
+          sale.buyer.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        sale.type.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesType = typeFilter === "all" || sale.type === typeFilter;
 
@@ -81,10 +89,16 @@ export default function SalesPage() {
   });
 
   function fetchSales() {
-    api.get<Sale[]>("/sales").then(setSales).catch(console.error).finally(() => setLoading(false));
+    api
+      .get<Sale[]>("/sales")
+      .then(setSales)
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }
 
-  useEffect(() => { fetchSales(); }, []);
+  useEffect(() => {
+    fetchSales();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -97,11 +111,25 @@ export default function SalesPage() {
         amount_etb: Number(form.amount_etb),
         buyer: form.buyer || null,
       });
-      toast({ title: "Sale recorded", description: `${formatETB(Number(form.amount_etb))} sale saved.` });
-      setForm({ sale_date: new Date().toISOString().split("T")[0], type: "eggs", quantity: "", amount_etb: "", buyer: "" });
+      toast({
+        title: "Sale recorded",
+        description: `${formatETB(Number(form.amount_etb))} sale saved.`,
+      });
+      setModalOpen(false);
+      setForm({
+        sale_date: new Date().toISOString().split("T")[0],
+        type: "eggs",
+        quantity: "",
+        amount_etb: "",
+        buyer: "",
+      });
       fetchSales();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Failed to save", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Failed to save",
+        description: err.message,
+      });
     } finally {
       setSaving(false);
     }
@@ -119,11 +147,18 @@ export default function SalesPage() {
         amount_etb: Number(editForm.amount_etb),
         buyer: editForm.buyer || null,
       });
-      toast({ title: "Sale updated", description: "Sale changes saved successfully." });
+      toast({
+        title: "Sale updated",
+        description: "Sale changes saved successfully.",
+      });
       setEditingSale(null);
       fetchSales();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Failed to update", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Failed to update",
+        description: err.message,
+      });
     } finally {
       setUpdating(false);
     }
@@ -134,19 +169,45 @@ export default function SalesPage() {
     setDeleting(true);
     try {
       await api.delete(`/sales/${deletingSale.id}`);
-      toast({ title: "Sale deleted", description: "The sale record has been deleted." });
+      toast({
+        title: "Sale deleted",
+        description: "The sale record has been deleted.",
+      });
       setDeletingSale(null);
       fetchSales();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Failed to delete", description: err.message });
+      toast({
+        variant: "destructive",
+        title: "Failed to delete",
+        description: err.message,
+      });
     } finally {
       setDeleting(false);
     }
   }
 
-  const totalMonth = sales
-    .filter((s) => s.sale_date.startsWith(new Date().toISOString().slice(0, 7)))
-    .reduce((sum, s) => sum + Number(s.amount_etb), 0);
+  const currentMonth = new Date().toISOString().slice(0, 7);
+  const currentMonthSales = filteredSales.filter((sale) =>
+    sale.sale_date.startsWith(currentMonth),
+  );
+  const totalMonth = currentMonthSales.reduce(
+    (sum, sale) => sum + Number(sale.amount_etb),
+    0,
+  );
+  const monthCount = currentMonthSales.length;
+
+  useEffect(() => {
+    if (!modalOpen) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setModalOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [modalOpen]);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -156,30 +217,238 @@ export default function SalesPage() {
         subtitle={`${t("This month", language)}: ${formatETB(totalMonth)}`}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2 rounded-xl border-border shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
-              <Plus className="w-4 h-4 text-primary" />
-              {t("Record sale", language)}
+      <Card className="rounded-xl border-border shadow-sm">
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-4">
+          <div className="space-y-1">
+            <CardTitle className="text-sm font-semibold text-foreground">
+              {t("Sales", language)}
             </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <p className="text-sm text-muted-foreground">
+              {sales.length} sales recorded
+            </p>
+          </div>
+          <Button className="h-11" onClick={() => setModalOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            {t("New sale", language)}
+          </Button>
+        </CardHeader>
+
+        <CardContent className="p-0 sm:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-2.5 mb-4 bg-muted/40 p-4 rounded-xl border border-border">
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                Search buyer or type...
+              </Label>
+              <Input
+                placeholder="Search buyer or type..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-9 text-xs bg-card"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                From
+              </Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="h-9 text-xs bg-card"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                To
+              </Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="h-9 text-xs bg-card"
+              />
+            </div>
+            <div className="flex items-end justify-end">
+              {searchTerm || startDate || endDate ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setStartDate("");
+                    setEndDate("");
+                  }}
+                  className="h-9"
+                >
+                  Clear
+                </Button>
+              ) : (
+                <div className="h-9" />
+              )}
+            </div>
+          </div>
+
+          <div className="text-sm text-muted-foreground px-6 py-2 border-b border-border/50">
+            This month: ETB {formatETB(totalMonth)} total across {monthCount}{" "}
+            sales
+          </div>
+
+          {loading ? (
+            <div className="flex items-center justify-center h-32">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="px-4 sm:px-0">
+              {filteredSales.length === 0 ? (
+                <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                  <table className="min-w-full text-left border-collapse">
+                    <tbody>
+                      <tr>
+                        <td
+                          colSpan={user?.role === "owner" ? 7 : 6}
+                          className="p-8 text-center text-sm text-muted-foreground"
+                        >
+                          {searchTerm || startDate || endDate
+                            ? "No sales match your filters. Try clearing them."
+                            : "No sales recorded yet. Add your first sale."}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                  <table className="min-w-full text-left border-collapse">
+                    <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
+                      <tr>
+                        <th className="py-3 px-4">Date</th>
+                        <th className="py-3 px-4">Type</th>
+                        <th className="py-3 px-4 text-right">Quantity</th>
+                        <th className="py-3 px-4 text-right">Amount (ETB)</th>
+                        <th className="py-3 px-4">Buyer</th>
+                        <th className="py-3 px-4">Recorded by</th>
+                        {user?.role === "owner" && (
+                          <th className="py-3 px-4 text-center">Delete</th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredSales.map((sale, index) => {
+                        const initials = sale.recorded_by_name
+                          ? sale.recorded_by_name
+                              .split(" ")
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .map((part) => part[0].toUpperCase())
+                              .join("")
+                          : "--";
+
+                        return (
+                          <tr
+                            key={sale.id}
+                            className={cn(
+                              "group border-b border-border/50 hover:bg-muted/30 transition-colors",
+                              index % 2 === 1 ? "bg-muted/10" : "",
+                            )}
+                          >
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              {formatDate(sale.sale_date)}
+                            </td>
+                            <td className="py-3 px-4 whitespace-nowrap">
+                              <span
+                                className={cn(
+                                  "inline-flex rounded-full px-2 py-1 text-[11px] font-semibold capitalize",
+                                  sale.type === "eggs"
+                                    ? "bg-primary/15 text-primary"
+                                    : "bg-amber-accent/15 text-amber-accent",
+                                )}
+                              >
+                                {sale.type}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-right font-medium tabular-nums whitespace-nowrap">
+                              {sale.quantity}
+                            </td>
+                            <td className="py-3 px-4 text-right font-medium text-[hsl(var(--revenue))] tabular-nums whitespace-nowrap">
+                              +ETB {formatETB(Number(sale.amount_etb))}
+                            </td>
+                            <td className="py-3 px-4 truncate max-w-[200px]">
+                              {sale.buyer || "—"}
+                            </td>
+                            <td className="py-3 px-4 flex items-center gap-3 whitespace-nowrap">
+                              <span className="w-6 h-6 rounded-full bg-primary/20 text-primary text-[10px] font-medium flex items-center justify-center shrink-0">
+                                {initials}
+                              </span>
+                              <span className="text-sm text-foreground truncate max-w-[110px]">
+                                {sale.recorded_by_name}
+                              </span>
+                            </td>
+                            {user?.role === "owner" && (
+                              <td className="py-3 px-4 text-center whitespace-nowrap">
+                                <button
+                                  type="button"
+                                  onClick={() => setDeletingSale(sale)}
+                                  className="opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="mx-auto w-4 h-4" />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {modalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+          onMouseDown={() => setModalOpen(false)}
+        >
+          <div
+            className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200"
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div>
+              <h3 className="text-lg font-bold text-foreground">
+                {t("New sale", language)}
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Record a new sale entry.
+              </p>
+            </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <FloatingInput
                 type="date"
                 label={t("Date", language)}
                 value={form.sale_date}
-                onChange={(e) => setForm({ ...form, sale_date: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, sale_date: e.target.value })
+                }
                 required
               />
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">{t("Type", language)}</Label>
-                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                  <SelectTrigger className="h-12 border-input bg-card rounded-xl text-base px-3"><SelectValue /></SelectTrigger>
+                <Label className="text-xs text-muted-foreground">
+                  {t("Type", language)}
+                </Label>
+                <Select
+                  value={form.type}
+                  onValueChange={(v) => setForm({ ...form, type: v })}
+                >
+                  <SelectTrigger className="h-12 border-input bg-card rounded-xl text-base px-3">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="eggs">{t("Eggs", language)}</SelectItem>
-                    <SelectItem value="broiler">{t("Broiler chickens", language)}</SelectItem>
+                    <SelectItem value="broiler">
+                      {t("Broiler chickens", language)}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -191,7 +460,9 @@ export default function SalesPage() {
                   placeholder="..."
                   label={t("Quantity", language)}
                   value={form.quantity}
-                  onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, quantity: e.target.value })
+                  }
                   required
                 />
                 <FloatingInput
@@ -200,7 +471,9 @@ export default function SalesPage() {
                   placeholder="..."
                   label={t("Amount (ETB)", language)}
                   value={form.amount_etb}
-                  onChange={(e) => setForm({ ...form, amount_etb: e.target.value })}
+                  onChange={(e) =>
+                    setForm({ ...form, amount_etb: e.target.value })
+                  }
                   required
                 />
               </div>
@@ -210,234 +483,32 @@ export default function SalesPage() {
                 value={form.buyer}
                 onChange={(e) => setForm({ ...form, buyer: e.target.value })}
               />
-              <div className="md:static sticky-save mt-2">
-                <Button type="submit" className="w-full h-12 text-base font-semibold shadow-sm" disabled={saving}>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setModalOpen(false)}
+                  disabled={saving}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                   {t("Save sale", language)}
                 </Button>
               </div>
             </form>
-          </CardContent>
-        </Card>
-
-        <Card className="lg:col-span-3 rounded-xl border-border shadow-sm">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-semibold text-foreground">{t("Recent sales", language)}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0 sm:p-6">
-            {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mb-4 bg-muted/40 p-3 rounded-xl border border-border mx-4 sm:mx-0">
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Search</Label>
-                <Input
-                  placeholder="Buyer / recorder..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-9 text-xs bg-card"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Type</Label>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="h-9 text-xs bg-card"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="eggs">Eggs</SelectItem>
-                    <SelectItem value="broiler">Broiler</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">From Date</Label>
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="h-9 text-xs bg-card"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-[10px] uppercase font-bold text-muted-foreground">To Date</Label>
-                <Input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="h-9 text-xs bg-card"
-                />
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <div className="px-4 sm:px-0">
-                {filteredSales.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-xl">{t("No entries yet", language)}</p>
-                ) : (
-                  <>
-                    {/* Desktop table view */}
-                    <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
-                      <table className="w-full text-xs text-left border-collapse">
-                        <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
-                          <tr>
-                            <th className="p-3">{t("Date", language)}</th>
-                            <th className="p-3">{t("Type", language)}</th>
-                            <th className="p-3">{t("Quantity", language)}</th>
-                            <th className="p-3">{t("Buyer", language)}</th>
-                            <th className="p-3">{t("Recorded by", language)}</th>
-                            <th className="p-3 text-right">{t("Amount", language)}</th>
-                            <th className="p-3 text-center">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border bg-card">
-                          {filteredSales.map((sale) => (
-                            <tr key={sale.id} className="hover:bg-muted/10 transition-colors">
-                              <td className="p-3 whitespace-nowrap">{formatDate(sale.sale_date)}</td>
-                              <td className="p-3 whitespace-nowrap">
-                                <Badge variant={sale.type === "eggs" ? "secondary" : "outline"} className="text-[10px] py-0.5 px-1.5 font-normal capitalize">
-                                  {sale.type}
-                                </Badge>
-                              </td>
-                              <td className="p-3 font-medium whitespace-nowrap">
-                                {sale.quantity} {sale.type === "eggs" ? "trays" : "birds"}
-                              </td>
-                              <td className="p-3 truncate max-w-[120px]">{sale.buyer || "—"}</td>
-                              <td className="p-3 truncate max-w-[120px] text-muted-foreground">{sale.recorded_by_name}</td>
-                              <td className="p-3 text-right font-semibold text-[hsl(var(--revenue))] whitespace-nowrap">
-                                +{formatETB(Number(sale.amount_etb))}
-                              </td>
-                              <td className="p-3 text-center whitespace-nowrap">
-                                <div className="flex items-center justify-center gap-1">
-                                  {(user?.role === "owner" || sale.recorded_by === user?.id) && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="w-7 h-7 text-muted-foreground hover:text-foreground"
-                                      onClick={() => {
-                                        setEditingSale(sale);
-                                        setEditForm({
-                                          sale_date: sale.sale_date.split("T")[0],
-                                          type: sale.type,
-                                          quantity: String(sale.quantity),
-                                          amount_etb: String(sale.amount_etb),
-                                          buyer: sale.buyer || "",
-                                        });
-                                      }}
-                                    >
-                                      <Edit2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  )}
-                                  {user?.role === "owner" && (
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="w-7 h-7 text-muted-foreground hover:text-destructive"
-                                      onClick={() => setDeletingSale(sale)}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Mobile card list view */}
-                    <div className="md:hidden space-y-2">
-                      {filteredSales.map((sale) => (
-                        <div
-                          key={sale.id}
-                          className="relative overflow-hidden bg-card rounded-xl border border-border shadow-sm group"
-                          onTouchStart={(e) => {
-                            touchStart.current = e.touches[0].clientX;
-                          }}
-                          onTouchMove={(e) => {
-                            const diff = touchStart.current - e.touches[0].clientX;
-                            if (diff > 50) setSwipedId(sale.id);
-                            if (diff < -50) setSwipedId(null);
-                          }}
-                        >
-                          <div
-                            className={cn(
-                              "p-4 flex items-center justify-between transition-transform duration-200 bg-card z-10 relative",
-                              swipedId === sale.id && "-translate-x-[110px]"
-                            )}
-                          >
-                            <div className="space-y-1 min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold text-foreground">
-                                  {formatDate(sale.sale_date)}
-                                </span>
-                                <Badge variant={sale.type === "eggs" ? "secondary" : "outline"} className="text-[9px] font-normal leading-none py-0.5 px-1 bg-muted border-none text-muted-foreground">
-                                  {sale.type}
-                                </Badge>
-                              </div>
-                              <p className="text-xs text-muted-foreground">
-                                {sale.quantity} {sale.type === "eggs" ? "trays" : "birds"} · {sale.buyer ? `to ${sale.buyer}` : "Cash sale"}
-                              </p>
-                            </div>
-                            <div className="text-right flex-shrink-0 ml-3">
-                              <span className="text-xs font-bold text-[hsl(var(--revenue))]">
-                                +{formatETB(Number(sale.amount_etb))}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Actions drawer (slides out) */}
-                          <div className="absolute right-0 top-0 bottom-0 flex items-center z-0 bg-muted">
-                            {(user?.role === "owner" || sale.recorded_by === user?.id) && (
-                              <button
-                                onClick={() => {
-                                  setSwipedId(null);
-                                  setEditingSale(sale);
-                                  setEditForm({
-                                    sale_date: sale.sale_date.split("T")[0],
-                                    type: sale.type,
-                                    quantity: String(sale.quantity),
-                                    amount_etb: String(sale.amount_etb),
-                                    buyer: sale.buyer || "",
-                                  });
-                                }}
-                                className="w-[55px] h-full bg-primary/10 text-primary flex items-center justify-center transition-colors"
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </button>
-                            )}
-                            {user?.role === "owner" && (
-                              <button
-                                onClick={() => {
-                                  setSwipedId(null);
-                                  setDeletingSale(sale);
-                                }}
-                                className="w-[55px] h-full bg-[hsl(var(--expense))]/10 text-[hsl(var(--expense))] flex items-center justify-center transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Edit Modal */}
+          </div>
+        </div>
+      )}
       {editingSale && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">Edit Sale</h3>
-              <p className="text-sm text-muted-foreground">Modify recorded data for this sale.</p>
+              <p className="text-sm text-muted-foreground">
+                Modify recorded data for this sale.
+              </p>
             </div>
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
@@ -446,14 +517,21 @@ export default function SalesPage() {
                   id="edit_sale_date"
                   type="date"
                   value={editForm.sale_date}
-                  onChange={(e) => setEditForm({ ...editForm, sale_date: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, sale_date: e.target.value })
+                  }
                   required
                 />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="edit_type">Type</Label>
-                <Select value={editForm.type} onValueChange={(v) => setEditForm({ ...editForm, type: v })}>
-                  <SelectTrigger id="edit_type"><SelectValue /></SelectTrigger>
+                <Select
+                  value={editForm.type}
+                  onValueChange={(v) => setEditForm({ ...editForm, type: v })}
+                >
+                  <SelectTrigger id="edit_type">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="eggs">Eggs</SelectItem>
                     <SelectItem value="broiler">Broiler chickens</SelectItem>
@@ -469,7 +547,9 @@ export default function SalesPage() {
                     min="0"
                     step="0.5"
                     value={editForm.quantity}
-                    onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, quantity: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -480,7 +560,9 @@ export default function SalesPage() {
                     type="number"
                     min="0"
                     value={editForm.amount_etb}
-                    onChange={(e) => setEditForm({ ...editForm, amount_etb: e.target.value })}
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, amount_etb: e.target.value })
+                    }
                     required
                   />
                 </div>
@@ -490,7 +572,9 @@ export default function SalesPage() {
                 <Input
                   id="edit_buyer"
                   value={editForm.buyer}
-                  onChange={(e) => setEditForm({ ...editForm, buyer: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, buyer: e.target.value })
+                  }
                 />
               </div>
               <div className="flex justify-end gap-2 pt-2">
@@ -503,7 +587,9 @@ export default function SalesPage() {
                   Cancel
                 </Button>
                 <Button type="submit" disabled={updating}>
-                  {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {updating && (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  )}
                   Save Changes
                 </Button>
               </div>
@@ -521,7 +607,8 @@ export default function SalesPage() {
                 <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
               </h3>
               <p className="text-sm text-muted-foreground mt-2">
-                {t("You are about to permanently delete", language)}? {t("This cannot be undone", language)}.
+                {t("You are about to permanently delete", language)}?{" "}
+                {t("This cannot be undone", language)}.
               </p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
