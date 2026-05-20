@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
 import { DailyLog } from "@/types";
-import { formatDate } from "@/lib/utils";
+import { formatDate, cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,8 @@ import { useToast } from "@/components/ui/toaster";
 import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
+import { PageHeader } from "@/components/app/page-header";
+import { FloatingInput } from "@/components/ui/floating-input";
 
 export default function DailyLogPage() {
   const { user } = useAuth();
@@ -23,6 +25,10 @@ export default function DailyLogPage() {
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Swipe-to-delete state
+  const [swipedId, setSwipedId] = useState<string | null>(null);
+  const touchStart = useRef<number>(0);
 
   // Modals/Edit state
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
@@ -133,63 +139,90 @@ export default function DailyLogPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-display text-foreground">{t("Daily log", language)}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">{t("Record today's eggs feed and any deaths", language)}</p>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      {/* Responsive Header */}
+      <PageHeader title={t("Daily log", language)} subtitle={t("Record today's eggs feed and any deaths", language)} />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Form */}
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm flex items-center gap-2"><Plus className="w-4 h-4" />{t("New entry", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Plus className="w-4 h-4 text-primary" />
+              {t("New entry", language)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="log_date">{t("Date", language)}</Label>
-                <Input id="log_date" type="date" value={form.log_date} onChange={(e) => setForm({ ...form, log_date: e.target.value })} required />
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <FloatingInput
+                id="log_date"
+                type="date"
+                label={t("Date", language)}
+                value={form.log_date}
+                onChange={(e) => setForm({ ...form, log_date: e.target.value })}
+                required
+              />
+              <FloatingInput
+                id="eggs"
+                type="number"
+                min="0"
+                placeholder="e.g. 162"
+                label={t("Eggs collected", language)}
+                value={form.eggs_collected}
+                onChange={(e) => setForm({ ...form, eggs_collected: e.target.value })}
+                required
+              />
+              <FloatingInput
+                id="feed"
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="e.g. 22"
+                label={t("Feed given (kg)", language)}
+                value={form.feed_given_kg}
+                onChange={(e) => setForm({ ...form, feed_given_kg: e.target.value })}
+                required
+              />
+              <FloatingInput
+                id="deaths"
+                type="number"
+                min="0"
+                label={t("Deaths", language)}
+                value={form.deaths}
+                onChange={(e) => setForm({ ...form, deaths: e.target.value })}
+              />
+              <FloatingInput
+                id="notes"
+                placeholder="..."
+                label={`${t("Notes", language)} (${t("optional", language)})`}
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              />
+              <div className="md:static sticky-save mt-2">
+                <Button type="submit" className="w-full h-12 text-base font-semibold shadow-sm" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {t("Save log", language)}
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="eggs">{t("Eggs collected", language)}</Label>
-                <Input id="eggs" type="number" min="0" placeholder="e.g. 162" value={form.eggs_collected} onChange={(e) => setForm({ ...form, eggs_collected: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="feed">{t("Feed given (kg)", language)}</Label>
-                <Input id="feed" type="number" min="0" step="0.5" placeholder="e.g. 22" value={form.feed_given_kg} onChange={(e) => setForm({ ...form, feed_given_kg: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="deaths">{t("Deaths", language)}</Label>
-                <Input id="deaths" type="number" min="0" value={form.deaths} onChange={(e) => setForm({ ...form, deaths: e.target.value })} />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="notes">{t("Notes", language)} <span className="text-muted-foreground font-normal">({t("optional", language)})</span></Label>
-                <Input id="notes" placeholder="..." value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
-              </div>
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("Save log", language)}
-              </Button>
             </form>
           </CardContent>
         </Card>
 
         {/* History */}
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm">{t("Recent logs", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold text-foreground">{t("Recent logs", language)}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4 bg-muted/20 p-2.5 rounded-lg border border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 mb-4 bg-muted/40 p-3 rounded-xl border border-border mx-4 sm:mx-0">
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Search</Label>
                 <Input
                   placeholder="Notes / logger..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
               <div className="space-y-1">
@@ -198,7 +231,7 @@ export default function DailyLogPage() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
               <div className="space-y-1">
@@ -207,7 +240,7 @@ export default function DailyLogPage() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
             </div>
@@ -217,74 +250,163 @@ export default function DailyLogPage() {
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div>
+              <div className="px-4 sm:px-0">
                 {filteredLogs.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-lg">{t("No logs yet", language)}</p>
+                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-xl">{t("No logs yet", language)}</p>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
-                        <tr>
-                          <th className="p-3">{t("Date", language)}</th>
-                          <th className="p-3">{t("Eggs collected", language)}</th>
-                          <th className="p-3">{t("Feed given (kg)", language)}</th>
-                          <th className="p-3">{t("Deaths", language)}</th>
-                          <th className="p-3">{t("Recorded by", language)}</th>
-                          <th className="p-3">{t("Notes", language)}</th>
-                          <th className="p-3 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {filteredLogs.map((log) => (
-                          <tr key={log.id} className="hover:bg-muted/10 transition-colors">
-                            <td className="p-3 whitespace-nowrap">{formatDate(log.log_date)}</td>
-                            <td className="p-3 font-medium whitespace-nowrap">{log.eggs_collected} eggs</td>
-                            <td className="p-3 font-medium whitespace-nowrap">{log.feed_given_kg} kg</td>
-                            <td className="p-3 whitespace-nowrap">
-                              <span className={log.deaths > 0 ? "text-[hsl(var(--expense))] font-semibold" : "text-muted-foreground"}>
-                                {log.deaths}
-                              </span>
-                            </td>
-                            <td className="p-3 truncate max-w-[120px] text-muted-foreground">{log.logged_by_name}</td>
-                            <td className="p-3 italic break-words max-w-[150px]">{log.notes || "—"}</td>
-                            <td className="p-3 text-center whitespace-nowrap">
-                              <div className="flex items-center justify-center gap-0.5">
-                                {(user?.role === "owner" || log.logged_by === user?.id) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 text-muted-foreground hover:text-foreground"
-                                    onClick={() => {
-                                      setEditingLog(log);
-                                      setEditForm({
-                                        log_date: log.log_date.split("T")[0],
-                                        eggs_collected: String(log.eggs_collected),
-                                        feed_given_kg: String(log.feed_given_kg),
-                                        deaths: String(log.deaths),
-                                        notes: log.notes || "",
-                                      });
-                                    }}
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                                {user?.role === "owner" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 text-muted-foreground hover:text-destructive"
-                                    onClick={() => setDeletingLog(log)}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
+                  <>
+                    {/* Desktop table view */}
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
+                          <tr>
+                            <th className="p-3">{t("Date", language)}</th>
+                            <th className="p-3">{t("Eggs collected", language)}</th>
+                            <th className="p-3">{t("Feed given (kg)", language)}</th>
+                            <th className="p-3">{t("Deaths", language)}</th>
+                            <th className="p-3">{t("Recorded by", language)}</th>
+                            <th className="p-3">{t("Notes", language)}</th>
+                            <th className="p-3 text-center">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border bg-card">
+                          {filteredLogs.map((log) => (
+                            <tr key={log.id} className="hover:bg-muted/10 transition-colors">
+                              <td className="p-3 whitespace-nowrap">{formatDate(log.log_date)}</td>
+                              <td className="p-3 font-medium whitespace-nowrap">{log.eggs_collected} eggs</td>
+                              <td className="p-3 font-medium whitespace-nowrap">{log.feed_given_kg} kg</td>
+                              <td className="p-3 whitespace-nowrap">
+                                <span className={log.deaths > 0 ? "text-[hsl(var(--expense))] font-semibold" : "text-muted-foreground"}>
+                                  {log.deaths}
+                                </span>
+                              </td>
+                              <td className="p-3 truncate max-w-[120px] text-muted-foreground">{log.logged_by_name}</td>
+                              <td className="p-3 italic break-words max-w-[150px]">{log.notes || "—"}</td>
+                              <td className="p-3 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  {(user?.role === "owner" || log.logged_by === user?.id) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                                      onClick={() => {
+                                        setEditingLog(log);
+                                        setEditForm({
+                                          log_date: log.log_date.split("T")[0],
+                                          eggs_collected: String(log.eggs_collected),
+                                          feed_given_kg: String(log.feed_given_kg),
+                                          deaths: String(log.deaths),
+                                          notes: log.notes || "",
+                                        });
+                                      }}
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                  {user?.role === "owner" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setDeletingLog(log)}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile card list view */}
+                    <div className="md:hidden space-y-2">
+                      {filteredLogs.map((log) => (
+                        <div
+                          key={log.id}
+                          className="relative overflow-hidden bg-card rounded-xl border border-border shadow-sm group"
+                          onTouchStart={(e) => {
+                            touchStart.current = e.touches[0].clientX;
+                          }}
+                          onTouchMove={(e) => {
+                            const diff = touchStart.current - e.touches[0].clientX;
+                            if (diff > 50) setSwipedId(log.id);
+                            if (diff < -50) setSwipedId(null);
+                          }}
+                        >
+                          {/* Main card content */}
+                          <div
+                            className={cn(
+                              "p-4 flex items-center justify-between transition-transform duration-200 bg-card z-10 relative",
+                              swipedId === log.id && "-translate-x-[110px]"
+                            )}
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-foreground">
+                                  {formatDate(log.log_date)}
+                                </span>
+                                {log.notes && (
+                                  <span className="text-[10px] text-muted-foreground truncate italic">
+                                    &ldquo;{log.notes}&rdquo;
+                                  </span>
                                 )}
                               </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                              <p className="text-xs text-muted-foreground">
+                                {log.eggs_collected} eggs · {log.feed_given_kg} kg feed · {log.logged_by_name}
+                              </p>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-3">
+                              {log.deaths > 0 ? (
+                                <span className="text-xs font-bold text-[hsl(var(--expense))] bg-[hsl(var(--expense))]/10 px-2 py-0.5 rounded-full">
+                                  {log.deaths} deaths
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                                  0 deaths
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Actions drawer (slides out) */}
+                          <div className="absolute right-0 top-0 bottom-0 flex items-center z-0 bg-muted">
+                            {(user?.role === "owner" || log.logged_by === user?.id) && (
+                              <button
+                                onClick={() => {
+                                  setSwipedId(null);
+                                  setEditingLog(log);
+                                  setEditForm({
+                                    log_date: log.log_date.split("T")[0],
+                                    eggs_collected: String(log.eggs_collected),
+                                    feed_given_kg: String(log.feed_given_kg),
+                                    deaths: String(log.deaths),
+                                    notes: log.notes || "",
+                                  });
+                                }}
+                                className="w-[55px] h-full bg-primary/10 text-primary flex items-center justify-center transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {user?.role === "owner" && (
+                              <button
+                                onClick={() => {
+                                  setSwipedId(null);
+                                  setDeletingLog(log);
+                                }}
+                                className="w-[55px] h-full bg-[hsl(var(--expense))]/10 text-[hsl(var(--expense))] flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -294,8 +416,8 @@ export default function DailyLogPage() {
 
       {/* Edit Modal */}
       {editingLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-md p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">Edit Daily Log</h3>
               <p className="text-sm text-muted-foreground">Modify recorded data for this day.</p>
@@ -374,8 +496,8 @@ export default function DailyLogPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-sm p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-sm p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground text-destructive flex items-center gap-2">
                 <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}

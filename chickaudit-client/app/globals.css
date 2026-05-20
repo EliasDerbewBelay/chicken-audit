@@ -1,85 +1,42 @@
-@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Serif+Display:ital@0;1&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600&family=Instrument+Serif:ital,wght@1,400&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-
 @layer base {
   :root {
-    /* Warm off-white background — feels like paper, not a screen */
-    --background: 40 30% 97%;
-    --foreground: 30 15% 12%;
-
-    --card: 40 25% 99%;
-    --card-foreground: 30 15% 12%;
-
-    --popover: 40 25% 99%;
-    --popover-foreground: 30 15% 12%;
-
-    /* Earthy green primary */
-    --primary: 145 35% 28%;
-    --primary-foreground: 145 20% 97%;
-
-    --secondary: 40 20% 92%;
-    --secondary-foreground: 30 15% 20%;
-
-    --muted: 40 15% 90%;
-    --muted-foreground: 30 10% 45%;
-
-    --accent: 40 40% 88%;
-    --accent-foreground: 30 20% 18%;
-
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 40 15% 86%;
-    --input: 40 15% 86%;
-    --ring: 145 35% 28%;
-
-    --radius: 0.6rem;
-
-    /* Farm semantic colors */
-    --revenue: 145 40% 35%;
+    --background: 40 20% 97%;          /* #F8F6F1 warm canvas */
+    --foreground: 210 15% 10%;
+    --card: 0 0% 100%;                 /* pure white cards */
+    --card-foreground: 210 15% 10%;
+    --primary: 158 42% 30%;            /* #2D6A4F deep green */
+    --primary-foreground: 0 0% 100%;
+    --sidebar-bg: 158 28% 14%;         /* #1A2E1F forest sidebar */
+    --sidebar-fg: 158 20% 85%;
+    --sidebar-active: 158 42% 30%;
+    --revenue: 158 42% 30%;            /* green for profit */
     --expense: 0 65% 48%;
-    --flock: 200 55% 38%;
+    --net-positive: 142 60% 35%;
+    --net-negative: 0 65% 48%;
+    --amber-accent: 43 80% 45%;        /* #D4A017 for highlights */
+    --border: 40 12% 88%;
+    --input: 40 12% 88%;
+    --muted: 40 10% 92%;
+    --muted-foreground: 40 8% 48%;
+    --radius: 0.75rem;
 
-    --font-dm-sans: "DM Sans", sans-serif;
-    --font-dm-serif: "DM Serif Display", serif;
+    --font-plus-jakarta: "Plus Jakarta Sans", sans-serif;
   }
 
   .dark {
-    --background: 30 12% 8%;
-    --foreground: 40 20% 90%;
-
-    --card: 30 12% 11%;
-    --card-foreground: 40 20% 90%;
-
-    --popover: 30 12% 11%;
-    --popover-foreground: 40 20% 90%;
-
-    --primary: 145 35% 48%;
-    --primary-foreground: 145 20% 8%;
-
-    --secondary: 30 10% 18%;
-    --secondary-foreground: 40 15% 80%;
-
-    --muted: 30 10% 16%;
-    --muted-foreground: 40 10% 55%;
-
-    --accent: 30 12% 20%;
-    --accent-foreground: 40 20% 90%;
-
-    --destructive: 0 62% 48%;
-    --destructive-foreground: 0 0% 98%;
-
-    --border: 30 10% 20%;
-    --input: 30 10% 20%;
-    --ring: 145 35% 48%;
-
-    --revenue: 145 40% 55%;
-    --expense: 0 65% 60%;
-    --flock: 200 55% 58%;
+    --background: 210 15% 8%;
+    --card: 210 14% 11%;
+    --card-foreground: 210 10% 90%;
+    --foreground: 210 10% 90%;
+    --sidebar-bg: 210 18% 7%;
+    --sidebar-fg: 210 10% 75%;
+    --primary: 158 42% 50%;
   }
 }
 
@@ -92,16 +49,38 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
   h1, h2 {
-    font-family: var(--font-dm-serif);
+    font-family: var(--font-plus-jakarta);
   }
 }
 
-@layer utilities {
-  .animate-fade-in {
-    animation: fade-in 0.3s ease-out both;
-  }
-  .stagger-1 { animation-delay: 0.05s; }
-  .stagger-2 { animation-delay: 0.10s; }
-  .stagger-3 { animation-delay: 0.15s; }
-  .stagger-4 { animation-delay: 0.20s; }
+/* Sticky save button on mobile */
+.sticky-save {
+  position: sticky;
+  bottom: calc(64px + env(safe-area-inset-bottom));
+  left: 0; right: 0;
+  padding: 12px 16px;
+  background: linear-gradient(to top, hsl(var(--background)) 70%, transparent);
+  z-index: 10;
 }
+
+/* Slide up drawer */
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.drawer-enter { animation: slide-up 0.25s cubic-bezier(0.32, 0.72, 0, 1) both; }
+
+/* Floating label */
+.floating-label-group { position: relative; }
+.floating-label { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: hsl(var(--muted-foreground)); transition: all 0.15s ease; pointer-events: none; background: transparent; }
+.floating-label-group:focus-within .floating-label,
+.floating-label-group.has-value .floating-label {
+  top: 0; font-size: 11px; background: hsl(var(--card)); padding: 0 4px; color: hsl(var(--primary));
+}
+
+/* Page entry animation */
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-enter 0.3s ease-out both; }

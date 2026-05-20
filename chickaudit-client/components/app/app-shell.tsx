@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { Sidebar } from "@/components/app/sidebar";
+import { BottomNav } from "@/components/app/bottom-nav";
 import { Loader2 } from "lucide-react";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -26,10 +27,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar />
-      <main className="flex-1 ml-56 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-6 py-8">{children}</div>
+      <div className="hidden md:block">
+        <Sidebar />
+      </div>
+      <main className="flex-1 md:ml-[64px] lg:ml-[220px] overflow-y-auto pb-20 md:pb-0">
+        <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 md:py-8 page-enter">
+          {children}
+        </div>
       </main>
+      <BottomNav />
     </div>
   );
 }

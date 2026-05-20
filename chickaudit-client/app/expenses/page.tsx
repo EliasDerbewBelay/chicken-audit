@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
 import { Expense } from "@/types";
 import { formatETB, formatDate } from "@/lib/utils";
@@ -15,6 +15,9 @@ import { useToast } from "@/components/ui/toaster";
 import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
+import { PageHeader } from "@/components/app/page-header";
+import { FloatingInput } from "@/components/ui/floating-input";
+import { cn } from "@/lib/utils";
 
 const CATEGORIES = [
   { value: "feed", label: "Feed" },
@@ -35,6 +38,10 @@ export default function ExpensesPage() {
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Swipe-to-delete state
+  const [swipedId, setSwipedId] = useState<string | null>(null);
+  const touchStart = useRef<number>(0);
 
   // Modals/Edit state
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
@@ -149,70 +156,84 @@ export default function ExpensesPage() {
     .reduce((sum, ex) => sum + Number(ex.amount_etb), 0);
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-display text-foreground">{t("Expenses", language)}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("This month", language)}: <span className="text-[hsl(var(--expense))] font-medium">{formatETB(totalMonth)}</span>
-        </p>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      {/* Page Header */}
+      <PageHeader
+        title={t("Expenses", language)}
+        subtitle={`${t("This month", language)}: ${formatETB(totalMonth)}`}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm flex items-center gap-2"><Plus className="w-4 h-4" />{t("Record expense", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Plus className="w-4 h-4 text-primary" />
+              {t("Record expense", language)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <FloatingInput
+                type="date"
+                label={t("Date", language)}
+                value={form.expense_date}
+                onChange={(e) => setForm({ ...form, expense_date: e.target.value })}
+                required
+              />
               <div className="space-y-1.5">
-                <Label>{t("Date", language)}</Label>
-                <Input type="date" value={form.expense_date} onChange={(e) => setForm({ ...form, expense_date: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("Category", language)}</Label>
+                <Label className="text-xs text-muted-foreground">{t("Category", language)}</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12 border-input bg-card rounded-xl text-base px-3"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{t(c.label, language)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("Amount (ETB)", language)}</Label>
-                <Input type="number" min="0" placeholder="..." value={form.amount_etb} onChange={(e) => setForm({ ...form, amount_etb: e.target.value })} required />
+              <FloatingInput
+                type="number"
+                min="0"
+                placeholder="..."
+                label={t("Amount (ETB)", language)}
+                value={form.amount_etb}
+                onChange={(e) => setForm({ ...form, amount_etb: e.target.value })}
+                required
+              />
+              <FloatingInput
+                placeholder="..."
+                label={`${t("Supplier / note", language)} (${t("optional", language)})`}
+                value={form.supplier}
+                onChange={(e) => setForm({ ...form, supplier: e.target.value })}
+              />
+              <div className="md:static sticky-save mt-2">
+                <Button type="submit" className="w-full h-12 text-base font-semibold shadow-sm" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {t("Save expense", language)}
+                </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("Supplier / note", language)} <span className="text-muted-foreground font-normal">({t("optional", language)})</span></Label>
-                <Input placeholder="..." value={form.supplier} onChange={(e) => setForm({ ...form, supplier: e.target.value })} />
-              </div>
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("Save expense", language)}
-              </Button>
             </form>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm">{t("Recent expenses", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold text-foreground">{t("Recent expenses", language)}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4 bg-muted/20 p-2.5 rounded-lg border border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mb-4 bg-muted/40 p-3 rounded-xl border border-border mx-4 sm:mx-0">
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Search</Label>
                 <Input
                   placeholder="Supplier / recorder..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Category</Label>
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-xs bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {CATEGORIES.map((c) => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
@@ -225,7 +246,7 @@ export default function ExpensesPage() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
               <div className="space-y-1">
@@ -234,7 +255,7 @@ export default function ExpensesPage() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
             </div>
@@ -244,73 +265,152 @@ export default function ExpensesPage() {
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div>
+              <div className="px-4 sm:px-0">
                 {filteredExpenses.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-lg">{t("No entries yet", language)}</p>
+                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-xl">{t("No entries yet", language)}</p>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
-                        <tr>
-                          <th className="p-3">{t("Date", language)}</th>
-                          <th className="p-3">{t("Category", language)}</th>
-                          <th className="p-3">{t("Supplier / Note", language)}</th>
-                          <th className="p-3">{t("Recorded by", language)}</th>
-                          <th className="p-3 text-right">{t("Amount", language)}</th>
-                          <th className="p-3 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {filteredExpenses.map((ex) => (
-                          <tr key={ex.id} className="hover:bg-muted/10 transition-colors">
-                            <td className="p-3 whitespace-nowrap">{formatDate(ex.expense_date)}</td>
-                            <td className="p-3 whitespace-nowrap">
-                              <Badge variant="secondary" className="text-[10px] py-0.5 px-1.5 font-normal capitalize">
-                                {ex.category}
-                              </Badge>
-                            </td>
-                            <td className="p-3 truncate max-w-[150px]">{ex.supplier || "—"}</td>
-                            <td className="p-3 truncate max-w-[120px] text-muted-foreground">{ex.recorded_by_name}</td>
-                            <td className="p-3 text-right font-semibold text-[hsl(var(--expense))] whitespace-nowrap">
-                              -{formatETB(Number(ex.amount_etb))}
-                            </td>
-                            <td className="p-3 text-center whitespace-nowrap">
-                              <div className="flex items-center justify-center gap-0.5">
-                                {(user?.role === "owner" || ex.recorded_by === user?.id) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 text-muted-foreground hover:text-foreground"
-                                    onClick={() => {
-                                      setEditingExpense(ex);
-                                      setEditForm({
-                                        expense_date: ex.expense_date.split("T")[0],
-                                        category: ex.category,
-                                        amount_etb: String(ex.amount_etb),
-                                        supplier: ex.supplier || "",
-                                      });
-                                    }}
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                                {user?.role === "owner" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 text-muted-foreground hover:text-destructive"
-                                    onClick={() => setDeletingExpense(ex)}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
+                  <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
+                          <tr>
+                            <th className="p-3">{t("Date", language)}</th>
+                            <th className="p-3">{t("Category", language)}</th>
+                            <th className="p-3">{t("Supplier / Note", language)}</th>
+                            <th className="p-3">{t("Recorded by", language)}</th>
+                            <th className="p-3 text-right">{t("Amount", language)}</th>
+                            <th className="p-3 text-center">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-border bg-card">
+                          {filteredExpenses.map((ex) => (
+                            <tr key={ex.id} className="hover:bg-muted/10 transition-colors">
+                              <td className="p-3 whitespace-nowrap">{formatDate(ex.expense_date)}</td>
+                              <td className="p-3 whitespace-nowrap">
+                                <Badge variant="secondary" className="text-[10px] py-0.5 px-1.5 font-normal capitalize">
+                                  {ex.category}
+                                </Badge>
+                              </td>
+                              <td className="p-3 truncate max-w-[150px]">{ex.supplier || "—"}</td>
+                              <td className="p-3 truncate max-w-[120px] text-muted-foreground">{ex.recorded_by_name}</td>
+                              <td className="p-3 text-right font-semibold text-[hsl(var(--expense))] whitespace-nowrap">
+                                -{formatETB(Number(ex.amount_etb))}
+                              </td>
+                              <td className="p-3 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  {(user?.role === "owner" || ex.recorded_by === user?.id) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                                      onClick={() => {
+                                        setEditingExpense(ex);
+                                        setEditForm({
+                                          expense_date: ex.expense_date.split("T")[0],
+                                          category: ex.category,
+                                          amount_etb: String(ex.amount_etb),
+                                          supplier: ex.supplier || "",
+                                        });
+                                      }}
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                  {user?.role === "owner" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setDeletingExpense(ex)}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Card List View */}
+                    <div className="md:hidden space-y-2">
+                      {filteredExpenses.map((ex) => (
+                        <div
+                          key={ex.id}
+                          className="relative overflow-hidden bg-card rounded-xl border border-border shadow-sm group"
+                          onTouchStart={(e) => {
+                            touchStart.current = e.touches[0].clientX;
+                          }}
+                          onTouchMove={(e) => {
+                            const diff = touchStart.current - e.touches[0].clientX;
+                            if (diff > 50) setSwipedId(ex.id);
+                            if (diff < -50) setSwipedId(null);
+                          }}
+                        >
+                          <div
+                            className={cn(
+                              "p-4 flex items-center justify-between transition-transform duration-200 bg-card z-10 relative",
+                              swipedId === ex.id && "-translate-x-[110px]"
+                            )}
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-foreground">
+                                  {formatDate(ex.expense_date)}
+                                </span>
+                                <Badge variant="secondary" className="text-[9px] font-normal leading-none py-0.5 px-1 bg-muted border-none text-muted-foreground">
+                                  {ex.category}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {ex.supplier ? ex.supplier : "Farm purchase"} · {ex.recorded_by_name}
+                              </p>
+                            </div>
+                            <div className="text-right flex-shrink-0 ml-3">
+                              <span className="text-xs font-bold text-[hsl(var(--expense))]">
+                                -{formatETB(Number(ex.amount_etb))}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Actions drawer (slides out) */}
+                          <div className="absolute right-0 top-0 bottom-0 flex items-center z-0 bg-muted">
+                            {(user?.role === "owner" || ex.recorded_by === user?.id) && (
+                              <button
+                                onClick={() => {
+                                  setSwipedId(null);
+                                  setEditingExpense(ex);
+                                  setEditForm({
+                                    expense_date: ex.expense_date.split("T")[0],
+                                    category: ex.category,
+                                    amount_etb: String(ex.amount_etb),
+                                    supplier: ex.supplier || "",
+                                  });
+                                }}
+                                className="w-[55px] h-full bg-primary/10 text-primary flex items-center justify-center transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {user?.role === "owner" && (
+                              <button
+                                onClick={() => {
+                                  setSwipedId(null);
+                                  setDeletingExpense(ex);
+                                }}
+                                className="w-[55px] h-full bg-[hsl(var(--expense))]/10 text-[hsl(var(--expense))] flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -320,8 +420,8 @@ export default function ExpensesPage() {
 
       {/* Edit Modal */}
       {editingExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-md p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">Edit Expense</h3>
               <p className="text-sm text-muted-foreground">Modify recorded data for this expense.</p>
@@ -386,8 +486,8 @@ export default function ExpensesPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingExpense && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-sm p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-sm p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground text-destructive flex items-center gap-2">
                 <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}

@@ -15,8 +15,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ["var(--font-dm-sans)", "sans-serif"],
-        display: ["var(--font-dm-serif)", "serif"],
+        sans: ["var(--font-plus-jakarta)", "sans-serif"],
+        serif: ["var(--font-instrument-serif)", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -56,6 +56,16 @@ const config: Config = {
         revenue: "hsl(var(--revenue))",
         expense: "hsl(var(--expense))",
         flock: "hsl(var(--flock))",
+        sidebar: {
+          bg: "hsl(var(--sidebar-bg))",
+          fg: "hsl(var(--sidebar-fg))",
+          active: "hsl(var(--sidebar-active))",
+        },
+        "amber-accent": "hsl(var(--amber-accent))",
+      },
+      boxShadow: {
+        "card-hover": "0 4px 16px rgba(0, 0, 0, 0.06)",
+        "bottom-nav": "0 -1px 0 0 hsl(var(--border))",
       },
       borderRadius: {
         lg: "var(--radius)",

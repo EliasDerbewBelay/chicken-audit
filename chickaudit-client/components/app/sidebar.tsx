@@ -73,95 +73,97 @@ export function Sidebar() {
 
   return (
     <>
-      <aside className="fixed left-0 top-0 h-full w-56 border-r border-border bg-card flex flex-col z-30">
+      <aside className="fixed left-0 top-0 h-full w-[64px] lg:w-[220px] bg-sidebar-bg flex flex-col z-30 border-r border-white/5 transition-all duration-200">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-5 py-5 border-b border-border">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Feather className="w-4 h-4 text-primary-foreground" />
+        <div className="flex items-center gap-2.5 px-3 lg:px-5 py-5 border-b border-white/5 justify-center lg:justify-start">
+          <div className="w-8 h-8 rounded-lg bg-[#2D6A4F] flex items-center justify-center flex-shrink-0 shadow-sm">
+            <Feather className="w-4.5 h-4.5 text-white" />
           </div>
-          <span className="font-display text-lg text-foreground">ChickAudit</span>
+          <span className="font-semibold text-lg text-white hidden lg:block tracking-tight">ChickAudit</span>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5">
+        <nav className="flex-1 py-4 space-y-0.5 overflow-y-auto">
           {items.map(({ href, label, icon: Icon }) => {
-            const active = pathname === href || pathname.startsWith(href + "/");
+            const active = pathname === href || (href !== "/dashboard" && pathname.startsWith(href));
             return (
               <Link
                 key={href}
                 href={href}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm transition-colors",
+                  "flex items-center gap-3.5 py-3 px-3.5 lg:px-5 text-sm transition-all border-l-[3px] w-full justify-center lg:justify-start",
                   active
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                    ? "border-l-[#4ade80] bg-white/10 text-white font-medium"
+                    : "border-l-transparent text-sidebar-fg hover:bg-white/5 hover:text-white"
                 )}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
-                {t(label, language)}
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                <span className="hidden lg:block truncate">{t(label, language)}</span>
               </Link>
             );
           })}
         </nav>
 
         {/* Language selector */}
-        <div className="px-4 pb-4">
-          <div className="flex bg-muted/50 p-1 rounded-md gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
+        <div className="px-2 lg:px-4 pb-4">
+          <div className="flex flex-col lg:flex-row bg-white/5 p-1 rounded-lg gap-1">
+            <button
               onClick={() => setLanguage("en")}
-              className={cn("flex-1 h-7 text-xs", language === "en" ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground")}
+              className={cn(
+                "flex-1 py-1 rounded-md text-[10px] lg:text-xs font-semibold transition-all",
+                language === "en" ? "bg-[#2D6A4F] text-white shadow-sm" : "text-sidebar-fg/60 hover:text-white"
+              )}
             >
               EN
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
+            </button>
+            <button
               onClick={() => setLanguage("am")}
-              className={cn("flex-1 h-7 text-xs", language === "am" ? "bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground shadow" : "text-muted-foreground hover:text-foreground")}
+              className={cn(
+                "flex-1 py-1 rounded-md text-[10px] lg:text-xs font-semibold transition-all",
+                language === "am" ? "bg-[#2D6A4F] text-white shadow-sm" : "text-sidebar-fg/60 hover:text-white"
+              )}
             >
               አማ
-            </Button>
+            </button>
           </div>
         </div>
 
         {/* User footer */}
-        <div className="px-4 py-4 border-t border-border">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center text-xs font-medium text-foreground">
-              {user?.full_name?.slice(0, 2).toUpperCase()}
+        <div className="p-3 lg:p-4 border-t border-white/5">
+          <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-[#2D6A4F] flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                {user?.full_name?.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0 hidden lg:block">
+                <p className="text-[13px] font-medium text-white truncate leading-tight">{user?.full_name}</p>
+                <p className="text-[11px] text-sidebar-fg/50 capitalize mt-0.5">{user?.role}</p>
+              </div>
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{user?.full_name}</p>
-              <p className="text-xs text-muted-foreground capitalize">{user?.role}</p>
+            <div className="flex flex-col lg:flex-row gap-0.5 items-center">
+              <button
+                onClick={() => setShowChangePassword(true)}
+                className="p-1.5 text-sidebar-fg hover:text-white rounded-md hover:bg-white/5"
+                title="Change password"
+              >
+                <Key className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={logout}
+                className="p-1.5 text-sidebar-fg hover:text-white rounded-md hover:bg-white/5"
+                title="Sign out"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-muted-foreground mb-1 text-xs"
-            onClick={() => setShowChangePassword(true)}
-          >
-            <Key className="w-3.5 h-3.5 mr-2" />
-            Change password
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full justify-start text-muted-foreground text-xs"
-            onClick={logout}
-          >
-            <LogOut className="w-3.5 h-3.5 mr-2" />
-            {t("Sign out", language)}
-          </Button>
         </div>
       </aside>
 
       {/* Change Password Modal */}
       {showChangePassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-md p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">Change Password</h3>
               <p className="text-sm text-muted-foreground">

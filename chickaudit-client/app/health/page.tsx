@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
 import { HealthEvent } from "@/types";
 import { formatDate } from "@/lib/utils";
@@ -15,6 +15,9 @@ import { useToast } from "@/components/ui/toaster";
 import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
+import { PageHeader } from "@/components/app/page-header";
+import { FloatingInput } from "@/components/ui/floating-input";
+import { cn } from "@/lib/utils";
 
 const EVENT_TYPES = [
   { value: "death", label: "Death" },
@@ -41,6 +44,10 @@ export default function HealthPage() {
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Swipe-to-delete state
+  const [swipedId, setSwipedId] = useState<string | null>(null);
+  const touchStart = useRef<number>(0);
 
   // Modals/Edit state
   const [editingEvent, setEditingEvent] = useState<HealthEvent | null>(null);
@@ -142,66 +149,76 @@ export default function HealthPage() {
     .length;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-display text-foreground">{t("Health", language)}</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {t("Deaths this month", language)}: <span className={deathsMonth > 0 ? "text-[hsl(var(--expense))] font-medium" : "text-muted-foreground"}>{deathsMonth}</span>
-        </p>
-      </div>
+    <div className="space-y-4 md:space-y-6">
+      {/* Page Header */}
+      <PageHeader
+        title={t("Health", language)}
+        subtitle={`${t("Deaths this month", language)}: ${deathsMonth}`}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <Card className="lg:col-span-2">
+        <Card className="lg:col-span-2 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm flex items-center gap-2"><Plus className="w-4 h-4" />{t("Log health event", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2 text-foreground">
+              <Plus className="w-4 h-4 text-primary" />
+              {t("Log health event", language)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <FloatingInput
+                type="date"
+                label={t("Date", language)}
+                value={form.event_date}
+                onChange={(e) => setForm({ ...form, event_date: e.target.value })}
+                required
+              />
               <div className="space-y-1.5">
-                <Label>{t("Date", language)}</Label>
-                <Input type="date" value={form.event_date} onChange={(e) => setForm({ ...form, event_date: e.target.value })} required />
-              </div>
-              <div className="space-y-1.5">
-                <Label>{t("Event type", language)}</Label>
+                <Label className="text-xs text-muted-foreground">{t("Event type", language)}</Label>
                 <Select value={form.event_type} onValueChange={(v) => setForm({ ...form, event_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-12 border-input bg-card rounded-xl text-base px-3"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {EVENT_TYPES.map((t_opt) => <SelectItem key={t_opt.value} value={t_opt.value}>{t(t_opt.label, language)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label>{t("Details", language)}</Label>
-                <Input placeholder="..." value={form.details} onChange={(e) => setForm({ ...form, details: e.target.value })} required />
+              <FloatingInput
+                placeholder="..."
+                label={t("Details", language)}
+                value={form.details}
+                onChange={(e) => setForm({ ...form, details: e.target.value })}
+                required
+              />
+              <div className="md:static sticky-save mt-2">
+                <Button type="submit" className="w-full h-12 text-base font-semibold shadow-sm" disabled={saving}>
+                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                  {t("Log event", language)}
+                </Button>
               </div>
-              <Button type="submit" className="w-full" disabled={saving}>
-                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("Log event", language)}
-              </Button>
             </form>
           </CardContent>
         </Card>
 
-        <Card className="lg:col-span-3">
+        <Card className="lg:col-span-3 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm">{t("Health history", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold text-foreground">{t("Health history", language)}</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="p-0 sm:p-6">
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 mb-4 bg-muted/20 p-2.5 rounded-lg border border-border">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 mb-4 bg-muted/40 p-3 rounded-xl border border-border mx-4 sm:mx-0">
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Search</Label>
                 <Input
                   placeholder="Details / recorder..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-[10px] uppercase font-bold text-muted-foreground">Event Type</Label>
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
-                  <SelectTrigger className="h-8 text-xs bg-background"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-xs bg-card"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Events</SelectItem>
                     {EVENT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
@@ -214,7 +231,7 @@ export default function HealthPage() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
               <div className="space-y-1">
@@ -223,7 +240,7 @@ export default function HealthPage() {
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="h-8 text-xs bg-background"
+                  className="h-9 text-xs bg-card"
                 />
               </div>
             </div>
@@ -233,68 +250,144 @@ export default function HealthPage() {
                 <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div>
+              <div className="px-4 sm:px-0">
                 {filteredEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-lg">{t("No entries yet", language)}</p>
+                  <p className="text-sm text-muted-foreground py-8 text-center border border-dashed rounded-xl">{t("No entries yet", language)}</p>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-xs text-left border-collapse">
-                      <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
-                        <tr>
-                          <th className="p-3">{t("Date", language)}</th>
-                          <th className="p-3">{t("Event type", language)}</th>
-                          <th className="p-3">{t("Details", language)}</th>
-                          <th className="p-3">{t("Recorded by", language)}</th>
-                          <th className="p-3 text-center">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {filteredEvents.map((ev) => (
-                          <tr key={ev.id} className="hover:bg-muted/10 transition-colors">
-                            <td className="p-3 whitespace-nowrap">{formatDate(ev.event_date)}</td>
-                            <td className="p-3 whitespace-nowrap">
-                              <Badge variant={EVENT_BADGE[ev.event_type] ?? "secondary"} className="text-[10px] py-0.5 px-1.5 font-normal capitalize">
-                                {ev.event_type.replace("_", " ")}
-                              </Badge>
-                            </td>
-                            <td className="p-3 text-foreground break-words max-w-[200px]">{ev.details}</td>
-                            <td className="p-3 truncate max-w-[120px] text-muted-foreground">{ev.recorded_by_name}</td>
-                            <td className="p-3 text-center whitespace-nowrap">
-                              <div className="flex items-center justify-center gap-0.5">
-                                {(user?.role === "owner" || ev.recorded_by === user?.id) && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 text-muted-foreground hover:text-foreground"
-                                    onClick={() => {
-                                      setEditingEvent(ev);
-                                      setEditForm({
-                                        event_date: ev.event_date.split("T")[0],
-                                        event_type: ev.event_type,
-                                        details: ev.details,
-                                      });
-                                    }}
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                                {user?.role === "owner" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="w-7 h-7 text-muted-foreground hover:text-destructive"
-                                    onClick={() => setDeletingEvent(ev)}
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </Button>
-                                )}
-                              </div>
-                            </td>
+                  <>
+                    {/* Desktop table view */}
+                    <div className="hidden md:block overflow-x-auto rounded-xl border border-border">
+                      <table className="w-full text-xs text-left border-collapse">
+                        <thead className="bg-muted/40 text-muted-foreground uppercase font-semibold border-b border-border">
+                          <tr>
+                            <th className="p-3">{t("Date", language)}</th>
+                            <th className="p-3">{t("Event type", language)}</th>
+                            <th className="p-3">{t("Details", language)}</th>
+                            <th className="p-3">{t("Recorded by", language)}</th>
+                            <th className="p-3 text-center">Actions</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody className="divide-y divide-border bg-card">
+                          {filteredEvents.map((ev) => (
+                            <tr key={ev.id} className="hover:bg-muted/10 transition-colors">
+                              <td className="p-3 whitespace-nowrap">{formatDate(ev.event_date)}</td>
+                              <td className="p-3 whitespace-nowrap">
+                                <Badge variant={EVENT_BADGE[ev.event_type] ?? "secondary"} className="text-[10px] py-0.5 px-1.5 font-normal capitalize">
+                                  {ev.event_type.replace("_", " ")}
+                                </Badge>
+                              </td>
+                              <td className="p-3 text-foreground break-words max-w-[200px]">{ev.details}</td>
+                              <td className="p-3 truncate max-w-[120px] text-muted-foreground">{ev.recorded_by_name}</td>
+                              <td className="p-3 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  {(user?.role === "owner" || ev.recorded_by === user?.id) && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-muted-foreground hover:text-foreground"
+                                      onClick={() => {
+                                        setEditingEvent(ev);
+                                        setEditForm({
+                                          event_date: ev.event_date.split("T")[0],
+                                          event_type: ev.event_type,
+                                          details: ev.details,
+                                        });
+                                      }}
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                  {user?.role === "owner" && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-muted-foreground hover:text-destructive"
+                                      onClick={() => setDeletingEvent(ev)}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile card list view */}
+                    <div className="md:hidden space-y-2">
+                      {filteredEvents.map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="relative overflow-hidden bg-card rounded-xl border border-border shadow-sm group"
+                          onTouchStart={(e) => {
+                            touchStart.current = e.touches[0].clientX;
+                          }}
+                          onTouchMove={(e) => {
+                            const diff = touchStart.current - e.touches[0].clientX;
+                            if (diff > 50) setSwipedId(ev.id);
+                            if (diff < -50) setSwipedId(null);
+                          }}
+                        >
+                          <div
+                            className={cn(
+                              "p-4 flex items-center justify-between transition-transform duration-200 bg-card z-10 relative",
+                              swipedId === ev.id && "-translate-x-[110px]"
+                            )}
+                          >
+                            <div className="space-y-1 min-w-0 flex-1">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold text-foreground">
+                                  {formatDate(ev.event_date)}
+                                </span>
+                                <Badge variant={EVENT_BADGE[ev.event_type] ?? "secondary"} className="text-[9px] font-normal leading-none py-0.5 px-1 capitalize">
+                                  {ev.event_type.replace("_", " ")}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {ev.details}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                Recorded by {ev.recorded_by_name}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Actions drawer (slides out) */}
+                          <div className="absolute right-0 top-0 bottom-0 flex items-center z-0 bg-muted">
+                            {(user?.role === "owner" || ev.recorded_by === user?.id) && (
+                              <button
+                                onClick={() => {
+                                  setSwipedId(null);
+                                  setEditingEvent(ev);
+                                  setEditForm({
+                                    event_date: ev.event_date.split("T")[0],
+                                    event_type: ev.event_type,
+                                    details: ev.details,
+                                  });
+                                }}
+                                className="w-[55px] h-full bg-primary/10 text-primary flex items-center justify-center transition-colors"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                            )}
+                            {user?.role === "owner" && (
+                              <button
+                                onClick={() => {
+                                  setSwipedId(null);
+                                  setDeletingEvent(ev);
+                                }}
+                                className="w-[55px] h-full bg-[hsl(var(--expense))]/10 text-[hsl(var(--expense))] flex items-center justify-center transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
                 )}
               </div>
             )}
@@ -304,8 +397,8 @@ export default function HealthPage() {
 
       {/* Edit Modal */}
       {editingEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-md p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">Edit Health Event</h3>
               <p className="text-sm text-muted-foreground">Modify details for this health event.</p>
@@ -326,7 +419,7 @@ export default function HealthPage() {
                 <Select value={editForm.event_type} onValueChange={(v) => setEditForm({ ...editForm, event_type: v })}>
                   <SelectTrigger id="edit_evt_type"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {EVENT_TYPES.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    {EVENT_TYPES.map((t_opt) => <SelectItem key={t_opt.value} value={t_opt.value}>{t(t_opt.label, language)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -360,8 +453,8 @@ export default function HealthPage() {
 
       {/* Delete Confirmation Modal */}
       {deletingEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card w-full max-w-sm p-6 rounded-lg border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-card w-full max-w-sm p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground text-destructive flex items-center gap-2">
                 <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
