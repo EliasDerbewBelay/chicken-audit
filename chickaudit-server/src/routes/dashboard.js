@@ -11,7 +11,6 @@ router.get("/", requireAuth, async (req, res) => {
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 864e5).toISOString().split("T")[0];
     const monthStart = today.slice(0, 7) + "-01";
-    const startingFlock = Number(process.env.STARTING_FLOCK ?? 200);
 
     const isOwner = req.user.role === "owner";
     const userId = req.user.id;
@@ -119,6 +118,7 @@ router.get("/", requireAuth, async (req, res) => {
       totalDeaths,
       last7Days,
       recentEntries,
+      startingFlockSetting,
     ] = await Promise.all([
       // Eggs today
       pool.query(
@@ -165,7 +165,12 @@ router.get("/", requireAuth, async (req, res) => {
         order by gs.day
       `, isOwner ? [] : [userId]),
       pool.query(recentQuery, recentParams),
+      pool.query("select value from settings where key = 'starting_flock'"),
     ]);
+
+    const startingFlockVal = startingFlockSetting.rows[0]?.value;
+    const fallbackFlock = Number(process.env.STARTING_FLOCK ?? 200);
+    const startingFlock = startingFlockVal ? Number(startingFlockVal) : fallbackFlock;
 
     res.json({
       eggs_today: Number(todayLog.rows[0]?.eggs_collected ?? 0),

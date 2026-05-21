@@ -45,7 +45,14 @@ const amharicDict: Record<string, string> = {
   "All farm entries": "ሁሉም የእርሻ ግቤቶች",
   "Deaths this month": "በዚህ ወር የሞቱ",
   "Recorded by": "የተመዘገበው በ",
-  "This cannot be undone": "ይህ ሊቀለበስ አይችልም"
+  "This cannot be undone": "ይህ ሊቀለበስ አይችልም",
+  "Settings": "ቅንብሮች",
+  "Farm Settings": "የእርሻ ቅንብሮች",
+  "Starting flock count": "የመነሻ መንጋ ብዛት",
+  "Manage your farm configuration": "የእርሻ ቅንብሮችን ያስተዳድሩ",
+  "Update": "አዘምን",
+  "Settings saved": "ቅንብሮች ተቀምጠዋል",
+  "The total number of chickens your farm started with": "እርሻዎ የጀመረበት አጠቃላይ የዶሮ ብዛት"
 };
 
 export type Language = "en" | "am";

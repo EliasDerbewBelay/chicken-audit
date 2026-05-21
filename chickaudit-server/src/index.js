@@ -10,6 +10,8 @@ const salesRoutes = require("./routes/sales");
 const expenseRoutes = require("./routes/expenses");
 const healthRoutes = require("./routes/health");
 const userRoutes = require("./routes/users");
+const settingsRoutes = require("./routes/settings");
+const chickensRoutes = require("./routes/chickens");
 
 const app = express();
 
@@ -38,6 +40,8 @@ app.use("/sales", salesRoutes);
 app.use("/expenses", expenseRoutes);
 app.use("/health", healthRoutes);
 app.use("/users", userRoutes);
+app.use("/settings", settingsRoutes);
+app.use("/chickens", chickensRoutes);
 
 // Health check (used by Railway)
 app.get("/ping", (_req, res) => res.json({ ok: true }));
@@ -79,4 +83,4 @@ const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
   console.log(`🐔  ChickAudit API running on http://localhost:${PORT}`);
 });
-// Nodemon trigger
+// Nodemon trigger 2

@@ -1,4 +1,9 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const BASE_URL = (
+  process.env.NEXT_PUBLIC_API_URL ||
+  (process.env.NODE_ENV === "production"
+    ? "https://chickaudit-server.onrender.com"
+    : "http://localhost:4000")
+).replace(/\/+$|\/$/, "");
 
 function getToken() {
   if (typeof window === "undefined") return null;
@@ -8,7 +13,7 @@ function getToken() {
 async function request<T>(
   method: string,
   path: string,
-  body?: unknown
+  body?: unknown,
 ): Promise<T> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -20,15 +25,24 @@ async function request<T>(
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 
+  const data = await res.json().catch(() => ({}) as Record<string, unknown>);
+
   if (res.status === 401) {
-    localStorage.removeItem("chickaudit_token");
-    localStorage.removeItem("chickaudit_user");
-    window.location.href = "/login";
-    throw new Error("Session expired");
+    const errorMessage =
+      data?.message ||
+      (path === "/auth/login" ? "Invalid email or password" : "Unauthorized");
+
+    if (token && path !== "/auth/login") {
+      localStorage.removeItem("chickaudit_token");
+      localStorage.removeItem("chickaudit_user");
+      window.location.href = "/login";
+      throw new Error("Session expired");
+    }
+
+    throw new Error(errorMessage as string);
   }
 
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message ?? "Request failed");
+  if (!res.ok) throw new Error((data as any).message ?? "Request failed");
   return data as T;
 }
 

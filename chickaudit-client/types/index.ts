@@ -77,3 +77,14 @@ export interface RecentEntry {
   recorded_by_name: string;
   date: string;
 }
+
+export interface ChickenAdjustment {
+  id: string;
+  date: string;
+  type: "addition" | "reduction" | "audit";
+  quantity: number;
+  reason?: string;
+  recorded_by?: string;
+  recorded_by_name?: string;
+  created_at: string;
+}

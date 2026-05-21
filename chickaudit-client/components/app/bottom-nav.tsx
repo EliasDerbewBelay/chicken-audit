@@ -11,6 +11,8 @@ import {
   Key,
   LogOut,
   Loader2,
+  Settings,
+  Bird,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
@@ -128,6 +130,20 @@ export function BottomNav() {
 
             <div className="space-y-1">
               <Link
+                href="/chickens"
+                onClick={() => setIsMoreOpen(false)}
+                className={cn(
+                  "flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm transition-colors",
+                  isTabActive("/chickens")
+                    ? "bg-primary/10 text-primary font-semibold"
+                    : "text-foreground hover:bg-muted"
+                )}
+              >
+                <Bird className="w-5 h-5 text-muted-foreground" />
+                {t("Chickens", language) || "Chickens"}
+              </Link>
+
+              <Link
                 href="/expenses"
                 onClick={() => setIsMoreOpen(false)}
                 className={cn(
@@ -168,6 +184,22 @@ export function BottomNav() {
                 >
                   <ShoppingCart className="w-5 h-5 text-muted-foreground" />
                   {t("Users", language) || "Users"}
+                </Link>
+              )}
+
+              {user?.role === "owner" && (
+                <Link
+                  href="/settings"
+                  onClick={() => setIsMoreOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm transition-colors",
+                    isTabActive("/settings")
+                      ? "bg-primary/10 text-primary font-semibold"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Settings className="w-5 h-5 text-muted-foreground" />
+                  {t("Settings", language)}
                 </Link>
               )}
 

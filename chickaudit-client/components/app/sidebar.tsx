@@ -14,6 +14,8 @@ import {
   Users,
   Key,
   Loader2,
+  Settings,
+  Bird,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
@@ -31,6 +33,7 @@ const navItems = [
   { href: "/sales", label: "Sales", icon: ShoppingCart },
   { href: "/expenses", label: "Expenses", icon: Receipt },
   { href: "/health", label: "Health", icon: Heart },
+  { href: "/chickens", label: "Chickens", icon: Bird },
 ];
 
 export function Sidebar() {
@@ -47,6 +50,7 @@ export function Sidebar() {
   const items = [...navItems];
   if (user?.role === "owner") {
     items.push({ href: "/users", label: "Users", icon: Users });
+    items.push({ href: "/settings", label: "Settings", icon: Settings });
   }
 
   async function handleChangePassword(e: React.FormEvent) {
