@@ -31,7 +31,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
       </div>
       <main className="flex-1 md:ml-[64px] lg:ml-[220px] overflow-y-auto pb-20 md:pb-0">
-        <div className="max-w-5xl mx-auto px-4 md:px-6 py-4 md:py-8 page-enter">
+        <div className="w-full px-4 md:px-6 py-4 md:py-8 page-enter">
           {children}
         </div>
       </main>

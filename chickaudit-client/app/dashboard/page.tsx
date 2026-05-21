@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, CartesianGrid, LabelList,
 } from "recharts";
 import { AlertTriangle, Egg, DollarSign, Bird, Activity, Loader2, Plus, KeyRound, Trash2 } from "lucide-react";
 import Link from "next/link";
@@ -345,20 +345,34 @@ interface CompactKpiCardProps {
 }
 
 function CompactKpiCard({ label, value, trendText, trendValue, icon: Icon, color = "default" }: CompactKpiCardProps) {
+  // Determine icon color based on label or color prop
+  let iconColorClass = "text-muted-foreground bg-muted/20";
+  if (label.toLowerCase().includes("eggs") || label.toLowerCase().includes("revenue")) {
+    iconColorClass = "text-[hsl(var(--revenue))] bg-[hsl(var(--revenue))]/10 border border-[hsl(var(--revenue))]/20";
+  } else if (label.toLowerCase().includes("expense")) {
+    iconColorClass = "text-[hsl(var(--expense))] bg-[hsl(var(--expense))]/10 border border-[hsl(var(--expense))]/20";
+  } else if (label.toLowerCase().includes("flock")) {
+    iconColorClass = "text-blue-500 bg-blue-500/10 border border-blue-500/20";
+  }
+
   return (
-    <Card className="h-[72px] p-4 flex flex-col justify-between rounded-xl border-border bg-card shadow-sm overflow-hidden select-none">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">{label}</span>
-        {Icon && <Icon className="w-3.5 h-3.5 text-muted-foreground/50" />}
+    <Card className="min-h-[140px] p-5 flex flex-col justify-between rounded-xl border-border bg-card shadow-sm overflow-hidden select-none">
+      <div className="flex items-start justify-between">
+        <span className="text-xs uppercase font-semibold text-muted-foreground tracking-wider mt-1">{label}</span>
+        {Icon && (
+          <div className={cn("p-2 rounded-full", iconColorClass)}>
+            <Icon className="w-4 h-4" />
+          </div>
+        )}
       </div>
-      <div className="flex items-baseline justify-between mt-0.5">
-        <span className="font-serif italic text-2xl leading-none font-bold text-foreground">
+      <div className="flex flex-col gap-2 mt-4">
+        <span className="font-serif text-3xl md:text-4xl leading-none font-bold text-foreground">
           {value}
         </span>
         {trendText && (
           <span
             className={cn(
-              "text-[10px] font-medium leading-none self-end",
+              "text-xs font-medium leading-none flex items-center gap-1",
               color === "expense"
                 ? "text-[hsl(var(--expense))]"
                 : trendValue && trendValue > 0
@@ -368,7 +382,7 @@ function CompactKpiCard({ label, value, trendText, trendValue, icon: Icon, color
                 : "text-muted-foreground"
             )}
           >
-            {trendValue && trendValue > 0 ? "↑ " : trendValue && trendValue < 0 ? "↓ " : ""}
+            {trendValue && trendValue > 0 ? "↗ " : trendValue && trendValue < 0 ? "↘ " : ""}
             {trendText}
           </span>
         )}
@@ -385,6 +399,35 @@ function getRoleBadgeColor(name: string) {
     return "bg-blue-500/10 text-blue-700 dark:text-blue-300";
   }
   return "bg-purple-500/10 text-purple-700 dark:text-purple-300";
+}
+
+const AVATAR_COLORS = [
+  'bg-blue-100 text-blue-700',
+  'bg-purple-100 text-purple-700',
+  'bg-amber-100 text-amber-700',
+  'bg-teal-100 text-teal-700',
+]
+function avatarColor(name: string) {
+  const i = (name?.charCodeAt(0) ?? 0) % AVATAR_COLORS.length
+  return AVATAR_COLORS[i]
+}
+
+function formatEntryDescription(entry: RecentEntry): string {
+  switch (entry.type) {
+    case 'sale':
+      return entry.description // already formatted as "X eggs" or "X broilers"
+    case 'expense':
+      // Capitalize category and append amount for clarity
+      const cat = entry.description.charAt(0).toUpperCase() + entry.description.slice(1)
+      return `${cat} purchase`
+    case 'log':
+      return entry.description // already "X eggs collected"
+    case 'health':
+      // Replace underscores, capitalize
+      return entry.description.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    default:
+      return entry.description
+  }
 }
 
 // 1. OWNER DASHBOARD VIEW
@@ -460,18 +503,26 @@ function OwnerDashboardView({
       </div>
 
       {/* Row 2: Chart + Right Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-4 items-stretch">
         {/* Left: 7-day Egg Chart */}
-        <Card className="lg:col-span-3 rounded-xl border-border bg-card shadow-sm p-4 flex flex-col justify-between">
-          <div>
-            <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider mb-2">
-              {t("7-day egg production", language)}
-            </h4>
-          </div>
-          <div className="flex-1">
-            <ResponsiveContainer width="100%" height={160}>
-              <BarChart data={data?.last_7_days_eggs ?? []} barSize={24}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="hsl(var(--border))" />
+        <Card className="lg:col-span-3 flex flex-col h-[340px] overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between py-3 px-5 shrink-0">
+            <CardTitle className="text-sm font-semibold">7-day egg production</CardTitle>
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-primary inline-block"/>
+                Today
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-sm bg-muted inline-block"/>
+                Previous days
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="px-2 pb-2 pt-0 flex-1 min-h-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data?.last_7_days_eggs ?? []} margin={{ top: 14, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
                 <XAxis
                   dataKey="date"
                   tickFormatter={(d) => {
@@ -481,24 +532,35 @@ function OwnerDashboardView({
                       return d;
                     }
                   }}
-                  tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={6}
+                />
+                <YAxis
+                  domain={[0, 'auto']}
+                  hide={false}
+                  width={32}
+                  tickCount={4}
+                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis hide />
                 <Tooltip
-                  formatter={(v: number) => [v, t("eggs", language)]}
-                  labelFormatter={(d) => formatDate(d)}
+                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
                   contentStyle={{
-                    fontSize: 11,
+                    background: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
                     borderRadius: 8,
-                    border: "1px solid hsl(var(--border))",
-                    background: "hsl(var(--card))",
-                    color: "hsl(var(--foreground))",
+                    fontSize: 12,
+                    color: 'hsl(var(--foreground))',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
                   }}
+                  formatter={(v: number) => [`${v} eggs`, '']}
+                  labelFormatter={(d) => formatDate(d)}
                 />
-                <ReferenceLine y={avgEggs} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" opacity={0.4} />
-                <Bar dataKey="count" radius={[3, 3, 0, 0]} minPointSize={3}>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} cursor="pointer" maxBarSize={48} minPointSize={6}>
+                  <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}/>
                   {(data?.last_7_days_eggs ?? []).map((entry: any, i: number, arr: any[]) => (
                     <Cell
                       key={i}
@@ -508,80 +570,59 @@ function OwnerDashboardView({
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-            {/* Chart Legend */}
-            <div className="flex justify-end items-center gap-4 text-[10px] text-muted-foreground mt-1 px-1">
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                <span>Today</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-muted" />
-                <span>Previous days</span>
-              </div>
-            </div>
-          </div>
+          </CardContent>
         </Card>
 
         {/* Right: Quick Stats Strip + Recent Entries */}
-        <div className="lg:col-span-2 flex flex-col gap-3">
-          {/* Quick Stats Strip */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="bg-muted/50 rounded-lg px-2.5 py-1.5 flex flex-col justify-between border border-border/40">
-              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider leading-none">Eggs Week</span>
-              <span className="text-xs font-extrabold text-foreground mt-1 leading-none">{totalEggsThisWeek}</span>
-            </div>
-            <div className="bg-muted/50 rounded-lg px-2.5 py-1.5 flex flex-col justify-between border border-border/40">
-              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider leading-none">Sales Month</span>
-              <span className="text-xs font-extrabold text-foreground mt-1 leading-none">{salesThisMonthCount}</span>
-            </div>
-            <div className="bg-muted/50 rounded-lg px-2.5 py-1.5 flex flex-col justify-between border border-border/40">
-              <span className="text-[9px] uppercase font-bold text-muted-foreground tracking-wider leading-none">Exp. Entries</span>
-              <span className="text-xs font-extrabold text-foreground mt-1 leading-none">{expensesThisMonthCount}</span>
-            </div>
+        <Card className="lg:col-span-2 flex flex-col h-[340px] overflow-hidden">
+          {/* Entries header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+            <p className="text-sm font-semibold text-foreground">Recent entries</p>
+            <Link href="/daily-log" className="text-xs text-primary hover:underline font-medium">View all</Link>
           </div>
 
-          {/* Recent entries list */}
-          <Card className="rounded-xl border-border bg-card shadow-sm p-4 flex-1 flex flex-col justify-between min-h-[196px]">
-            <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
-              <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-                {t("Your recent entries", language)}
-              </h4>
-              <Link href="/daily-log" className="text-[10px] font-bold text-primary hover:underline">
-                View all
-              </Link>
-            </div>
-            <div className="flex-1 divide-y divide-border/60 overflow-y-auto">
-              {recentEntries.slice(0, 8).map((entry) => (
-                <div key={entry.id} className="flex items-center justify-between py-1.5 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-xs font-medium text-foreground truncate">{entry.description}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className={cn("text-[9px] px-1 py-0.2 rounded-full font-bold", getRoleBadgeColor(entry.recorded_by_name))}>
-                        {entry.recorded_by_name.split(" ")[0]}
-                      </span>
-                      <span className="text-[9px] text-muted-foreground">{formatDate(entry.date)}</span>
+          {/* Entries list */}
+          <div className="flex-1 overflow-y-auto divide-y divide-border/50">
+            {recentEntries.slice(0, 5).map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-muted/40 transition-colors group">
+                <div className={cn(
+                  "w-0.5 h-8 rounded-full shrink-0",
+                  entry.type === 'sale'    && "bg-[hsl(var(--revenue))]",
+                  entry.type === 'expense' && "bg-[hsl(var(--expense))]",
+                  entry.type === 'log'     && "bg-primary/40",
+                  entry.type === 'health'  && "bg-amber-400",
+                )}/>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-foreground truncate">
+                    {formatEntryDescription(entry)}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0", avatarColor(entry.recorded_by_name))}>
+                      {entry.recorded_by_name?.slice(0, 1).toUpperCase()}
                     </div>
-                  </div>
-                  {entry.amount !== undefined ? (
-                    <span
-                      className={cn(
-                        "text-xs font-bold shrink-0",
-                        entry.type === "sale" ? "text-[hsl(var(--revenue))]" : "text-[hsl(var(--expense))]"
-                      )}
-                    >
-                      {entry.type === "sale" ? "+" : "−"}
-                      {formatETB(entry.amount)}
+                    <span className="text-xs text-muted-foreground">
+                      {entry.recorded_by_name} · {formatDate(entry.date)}
                     </span>
-                  ) : (
-                    <Badge variant="secondary" className="shrink-0 text-[8px] px-1 py-0 font-bold bg-muted text-muted-foreground border-none">
-                      {t(entry.type, language)}
-                    </Badge>
-                  )}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </Card>
-        </div>
+                {entry.amount !== null && entry.amount !== undefined && Number(entry.amount) !== 0 ? (
+                  <span className={cn(
+                    "text-sm font-medium tabular-nums shrink-0",
+                    entry.type === 'sale'
+                      ? "text-[hsl(var(--revenue))]"
+                      : "text-[hsl(var(--expense))]"
+                  )}>
+                    {entry.type === 'sale' ? '+' : '−'}ETB {Number(entry.amount).toLocaleString()}
+                  </span>
+                ) : entry.type === 'log' || entry.type === 'health' ? (
+                  <Badge variant="secondary" className="text-xs shrink-0">
+                    {entry.type === 'log' ? 'Log' : 'Health'}
+                  </Badge>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
       {/* Row 3: Farm Activity Feed (Full-Width, Owner Only) */}
@@ -608,70 +649,84 @@ function OwnerDashboardView({
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-border/80">
-          <table className="w-full text-left border-collapse table-fixed">
-            <thead className="bg-muted/50 border-b border-border/85">
-              <tr className="h-8">
-                <th className="p-2 pl-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[80px]">Date</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[180px] sm:w-auto">Description</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[70px]">Type</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[90px]">Recorded</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide text-right w-[90px]">Amount</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide text-center w-[50px]">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filteredRecentEntries.length === 0 ? (
-                <tr className="h-10">
-                  <td colSpan={6} className="p-2 text-center text-xs text-muted-foreground italic">
-                    No entries found matching this filter.
-                  </td>
+        <div className="overflow-hidden rounded-lg border border-border/50 bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="bg-muted/30 border-b border-border/50">
+                <tr>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Date</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider w-full">Description</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Recorded By</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-right">Amount</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-center">Action</th>
                 </tr>
-              ) : (
-                filteredRecentEntries.map((entry) => (
-                  <tr key={entry.id} className="h-10 text-xs hover:bg-accent/40 group transition-colors odd:bg-background even:bg-muted/20">
-                    <td className="p-2 pl-3 text-muted-foreground whitespace-nowrap">{formatDate(entry.date).slice(0, 6)}</td>
-                    <td className="p-2 font-medium text-foreground truncate pr-4">{entry.description}</td>
-                    <td className="p-2">
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          "text-[9px] px-1.5 py-0 leading-none font-bold border-none rounded-full select-none capitalize",
-                          entry.type === "log" && "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-                          entry.type === "sale" && "bg-emerald-500/10 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300",
-                          entry.type === "expense" && "bg-rose-500/10 text-rose-800 dark:bg-rose-500/20 dark:text-rose-300",
-                          entry.type === "health" && "bg-amber-500/10 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300"
-                        )}
-                      >
-                        {entry.type === "log" ? "Log" : entry.type}
-                      </Badge>
-                    </td>
-                    <td className="p-2 font-medium text-muted-foreground truncate">{entry.recorded_by_name}</td>
-                    <td
-                      className={cn(
-                        "p-2 text-right font-semibold tabular-nums",
-                        entry.amount !== undefined
-                          ? entry.type === "sale"
-                            ? "text-[hsl(var(--revenue))]"
-                            : "text-[hsl(var(--expense))]"
-                          : "text-muted-foreground"
-                      )}
-                    >
-                      {entry.amount !== undefined ? (entry.type === "sale" ? "+" : "−") + formatETB(entry.amount) : "—"}
-                    </td>
-                    <td className="p-2 text-center">
-                      <button
-                        onClick={() => onDeleteEntry(entry.id, entry.type)}
-                        className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all duration-150 p-1 rounded hover:bg-muted/80"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {filteredRecentEntries.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                      No entries found matching this filter.
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filteredRecentEntries.map((entry) => (
+                    <tr key={entry.id} className="text-sm hover:bg-muted/30 transition-colors group">
+                      <td className="px-4 py-3 text-muted-foreground">
+                        {formatDate(entry.date).slice(0, 6)}
+                      </td>
+                      <td className="px-4 py-3 font-medium text-foreground">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-1 h-5 rounded-full shrink-0",
+                            entry.type === 'sale'    && "bg-[hsl(var(--revenue))]",
+                            entry.type === 'expense' && "bg-[hsl(var(--expense))]",
+                            entry.type === 'log'     && "bg-primary/40",
+                            entry.type === 'health'  && "bg-amber-400",
+                          )}/>
+                          <span className="truncate max-w-[200px] sm:max-w-[300px]">{formatEntryDescription(entry)}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
+                          {entry.type === "log" ? "Log" : entry.type}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0", avatarColor(entry.recorded_by_name))}>
+                            {entry.recorded_by_name?.slice(0, 1).toUpperCase()}
+                          </div>
+                          <span className="truncate max-w-[120px]">{entry.recorded_by_name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {entry.amount !== null && entry.amount !== undefined && Number(entry.amount) !== 0 ? (
+                          <span className={cn(
+                            "font-semibold tabular-nums",
+                            entry.type === 'sale' ? "text-[hsl(var(--revenue))]" : "text-[hsl(var(--expense))]"
+                          )}>
+                            {entry.type === 'sale' ? '+' : '−'}ETB {Number(entry.amount).toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground/50">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <button
+                          onClick={() => onDeleteEntry(entry.id, entry.type)}
+                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all duration-150 p-1.5 rounded hover:bg-muted/80"
+                          title="Delete entry"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </Card>
 
@@ -689,72 +744,74 @@ function OwnerDashboardView({
           </Link>
         </div>
 
-        <div className="overflow-x-auto rounded-lg border border-border/80">
-          <table className="w-full text-left border-collapse table-fixed">
-            <thead className="bg-muted/50 border-b border-border/85">
-              <tr className="h-8">
-                <th className="p-2 pl-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[180px] sm:w-auto">Name</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[90px]">Role</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[180px]">Email</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide w-[100px]">Joined</th>
-                <th className="p-2 text-[10px] uppercase font-bold text-muted-foreground tracking-wide text-right w-[130px] pr-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {users.map((u) => {
-                const initials = u.full_name.slice(0, 2).toUpperCase();
-                const joinedDate = (() => {
-                  try {
-                    return new Date(u.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
-                  } catch (e) {
-                    return "Jan 2026";
-                  }
-                })();
+        <div className="overflow-hidden rounded-lg border border-border/50 bg-card">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse whitespace-nowrap">
+              <thead className="bg-muted/30 border-b border-border/50">
+                <tr>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider w-full">Name</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Role</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Email</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Joined</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-right pr-4">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {users.map((u) => {
+                  const initials = u.full_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
+                  const joinedDate = (() => {
+                    try {
+                      return new Date(u.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+                    } catch (e) {
+                      return "Jan 2026";
+                    }
+                  })();
 
-                return (
-                  <tr key={u.id} className="h-10 text-xs hover:bg-accent/40 transition-colors odd:bg-background even:bg-muted/20">
-                    <td className="p-2 pl-3">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className={cn(
-                            "w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 select-none",
-                            u.role === "owner" ? "bg-emerald-600" : "bg-blue-600"
-                          )}
-                        >
-                          {initials}
+                  return (
+                    <tr key={u.id} className="text-sm hover:bg-muted/30 transition-colors group">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              "w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 select-none",
+                              u.role === "owner" ? "bg-emerald-600" : "bg-blue-600"
+                            )}
+                          >
+                            {initials}
+                          </div>
+                          <span className="font-medium text-foreground truncate">{u.full_name}</span>
                         </div>
-                        <span className="font-semibold text-foreground truncate">{u.full_name}</span>
-                      </div>
-                    </td>
-                    <td className="p-2">
-                      {u.role === "owner" ? (
-                        <Badge className="text-[9px] py-0 px-2 leading-none font-bold bg-primary text-white border-none rounded-full">
-                          Owner
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[9px] py-0 px-2 leading-none font-bold text-muted-foreground border-border rounded-full bg-transparent">
-                          Employee
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="p-2 text-muted-foreground truncate">{u.email}</td>
-                    <td className="p-2 text-muted-foreground whitespace-nowrap">{joinedDate}</td>
-                    <td className="p-2 text-right pr-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setSelectedUser(u)}
-                        className="h-6 text-[9px] font-bold text-muted-foreground hover:text-foreground hover:bg-muted/80 gap-1 rounded"
-                      >
-                        <KeyRound className="w-2.5 h-2.5" />
-                        Reset password
-                      </Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-4 py-3">
+                        {u.role === "owner" ? (
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium border-none shadow-none bg-emerald-500/10 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
+                            Owner
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
+                            Employee
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground truncate">{u.email}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{joinedDate}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedUser(u)}
+                          className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 gap-1.5 rounded-md px-3"
+                        >
+                          <KeyRound className="w-3 h-3" />
+                          Reset password
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </Card>
     </div>

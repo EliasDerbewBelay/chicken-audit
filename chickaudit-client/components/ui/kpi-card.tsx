@@ -35,20 +35,27 @@ export function KpiCard({
   return (
     <Card
       className={cn(
-        "bg-card border border-border rounded-xl transition-all duration-200 hover:shadow-card-hover",
+        "bg-card border border-border rounded-xl transition-all duration-200 hover:shadow-card-hover min-h-[140px] flex flex-col justify-between",
         stagger && `animate-fade-in stagger-${stagger}`
       )}
     >
-      <CardContent className="p-4 md:p-5">
-        <div className="flex items-center justify-between mb-2 md:mb-3">
-          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
-            {label}
-          </span>
-          {Icon && <Icon className="w-4 h-4 text-muted-foreground/75" />}
-        </div>
-        <p className={cn("font-serif italic text-3xl md:text-4xl leading-none", valueColorClass)}>
-          {value}
-        </p>
+      <CardContent className="p-5 flex flex-col justify-between h-full">
+        <div>
+          <div className="flex items-start justify-between mb-4">
+            <span className="text-xs uppercase font-semibold text-muted-foreground tracking-wider mt-1">
+              {label}
+            </span>
+            {Icon && (
+              <div className="p-2 rounded-full text-muted-foreground bg-muted/20">
+                <Icon className="w-4 h-4" />
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className={cn("font-serif text-3xl md:text-4xl leading-none font-bold", valueColorClass)}>
+              {value}
+            </p>
+
         {trend ? (
           <div className="flex items-center gap-1 mt-2.5 text-[11px] font-medium">
             {trend.value >= 0 ? (
@@ -73,6 +80,8 @@ export function KpiCard({
             {description}
           </p>
         ) : null}
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

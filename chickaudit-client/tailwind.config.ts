@@ -16,7 +16,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-plus-jakarta)", "sans-serif"],
-        serif: ["var(--font-instrument-serif)", "serif"],
+        serif: ["var(--font-playfair-display)", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

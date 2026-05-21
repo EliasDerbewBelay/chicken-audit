@@ -79,7 +79,7 @@ export function Sidebar() {
           <div className="w-8 h-8 rounded-lg bg-[#2D6A4F] flex items-center justify-center flex-shrink-0 shadow-sm">
             <Feather className="w-4.5 h-4.5 text-white" />
           </div>
-          <span className="font-semibold text-lg text-white hidden lg:block tracking-tight">ChickAudit</span>
+          <span className="font-serif font-bold text-2xl text-white hidden lg:block tracking-tight">ChickAudit</span>
         </div>
 
         {/* Nav */}

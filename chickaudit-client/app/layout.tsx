@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Instrument_Serif } from "next/font/google";
+import { Plus_Jakarta_Sans, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { LanguageProvider } from "@/lib/language-context";
@@ -11,11 +11,10 @@ const plusJakarta = Plus_Jakarta_Sans({
   display: "swap",
 });
 
-const instrumentSerif = Instrument_Serif({
+const playfairDisplay = Playfair_Display({
   subsets: ["latin"],
-  weight: ["400"],
-  style: ["italic"],
-  variable: "--font-instrument-serif",
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-playfair-display",
   display: "swap",
 });
 
@@ -33,7 +32,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${plusJakarta.variable} ${instrumentSerif.variable} antialiased`}>
+      <body className={`${plusJakarta.variable} ${playfairDisplay.variable} antialiased`}>
         <LanguageProvider>
           {children}
           <Toaster />
