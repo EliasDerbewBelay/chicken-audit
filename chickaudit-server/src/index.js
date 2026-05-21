@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const pool = require("./db/pool");
 
 const authRoutes = require("./routes/auth");
 const dashboardRoutes = require("./routes/dashboard");
@@ -40,6 +41,29 @@ app.use("/users", userRoutes);
 
 // Health check (used by Railway)
 app.get("/ping", (_req, res) => res.json({ ok: true }));
+
+// Seed status & forced seeding endpoints (temporary for debugging)
+app.get("/seed-status", async (_req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT id, full_name, email, role FROM users");
+    res.json({
+      count: rows.length,
+      users: rows.map(r => ({ id: r.id, name: r.full_name, email: r.email, role: r.role }))
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/force-seed", async (_req, res) => {
+  try {
+    const { execSync } = require("child_process");
+    execSync("node src/db/seed.js", { stdio: "inherit" });
+    res.json({ message: "Forced seed script executed successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ message: "Route not found" }));
