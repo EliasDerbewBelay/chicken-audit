@@ -45,10 +45,34 @@ app.get("/ping", (_req, res) => res.json({ ok: true }));
 // Seed status & forced seeding endpoints (temporary for debugging)
 app.get("/seed-status", async (_req, res) => {
   try {
-    const { rows } = await pool.query("SELECT id, full_name, email, role FROM users");
+    const bcrypt = require("bcryptjs");
+    const { rows } = await pool.query("SELECT id, full_name, email, role, password FROM users");
+    
+    const seedPasswords = {
+      "getnet.aycheh@chickaudit.com": "change_me_123",
+      "derbew.belay@chickaudit.com": "change_me_456",
+      "aklilu.derbew@chickaudit.com": "change_me_789"
+    };
+
+    const usersWithPassCheck = [];
+    for (const r of rows) {
+      const expectedPassword = seedPasswords[r.email];
+      let matches = false;
+      if (expectedPassword && r.password) {
+        matches = await bcrypt.compare(expectedPassword, r.password);
+      }
+      usersWithPassCheck.push({
+        id: r.id,
+        name: r.full_name,
+        email: r.email,
+        role: r.role,
+        passwordMatchesExpectedSeed: matches
+      });
+    }
+
     res.json({
       count: rows.length,
-      users: rows.map(r => ({ id: r.id, name: r.full_name, email: r.email, role: r.role }))
+      users: usersWithPassCheck
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

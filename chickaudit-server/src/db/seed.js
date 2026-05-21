@@ -40,7 +40,10 @@ async function seed() {
       await pool.query(
         `insert into users (full_name, email, password, role)
          values ($1, $2, $3, $4)
-         on conflict (email) do nothing`,
+         on conflict (email) do update
+         set password = excluded.password,
+             full_name = excluded.full_name,
+             role = excluded.role`,
         [user.full_name, user.email.toLowerCase(), hash, user.role]
       );
       console.log(`  ✅  ${user.role.padEnd(8)} ${user.email}`);
