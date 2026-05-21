@@ -19,9 +19,21 @@ export default function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const trimmedEmail = email.trim().toLowerCase();
+    const trimmedPassword = password.trim();
+
+    if (!trimmedEmail || !trimmedPassword) {
+      toast({
+        variant: "destructive",
+        title: t("Login failed", language),
+        description: t("Please enter both email and password.", language),
+      });
+      return;
+    }
+
     setLoading(true);
     try {
-      await login(email, password);
+      await login(trimmedEmail, trimmedPassword);
     } catch (err: any) {
       toast({ variant: "destructive", title: t("Login failed", language), description: err.message });
     } finally {

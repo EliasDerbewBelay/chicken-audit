@@ -16,10 +16,24 @@ const chickensRoutes = require("./routes/chickens");
 const app = express();
 
 // ── Middleware ──────────────────────────────────────────────
+const rawClientOrigins = process.env.CLIENT_ORIGIN || "http://localhost:3000";
+const clientOrigins = rawClientOrigins
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (clientOrigins.includes("*") || clientOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`CORS origin not allowed: ${origin}`));
+    },
     credentials: true,
+    methods: ["GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
 app.use(express.json());

@@ -1,13 +1,22 @@
-const BASE_URL = (
-  process.env.NEXT_PUBLIC_API_URL ||
-  (process.env.NODE_ENV === "production"
+const DEFAULT_API_URL =
+  process.env.NODE_ENV === "production"
     ? "https://chickaudit-server.onrender.com"
-    : "http://localhost:4000")
+    : "http://localhost:4000";
+
+const BACKEND_URL = (
+  process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
 ).replace(/\/+$|\/$/, "");
 
 function getToken() {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("chickaudit_token");
+}
+
+function getUrl(path: string) {
+  if (typeof window !== "undefined") {
+    return `/api${path}`;
+  }
+  return `${BACKEND_URL}${path}`;
 }
 
 async function request<T>(
@@ -16,14 +25,23 @@ async function request<T>(
   body?: unknown,
 ): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+
+  let res: Response;
+  try {
+    res = await fetch(getUrl(path), {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+  } catch (err: any) {
+    console.error("API request failed", err);
+    throw new Error(
+      "Unable to connect to the backend. Please check the API URL and CORS settings.",
+    );
+  }
 
   const data = await res.json().catch(() => ({}) as Record<string, unknown>);
 
