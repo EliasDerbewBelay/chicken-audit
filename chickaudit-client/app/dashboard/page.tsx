@@ -19,10 +19,12 @@ import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
 import { KpiCard } from "@/components/ui/kpi-card";
+import { useToast } from "@/components/ui/toaster";
 
 export default function DashboardPage() {
   const { user } = useAuth();
   const { language } = useLanguage();
+  const { toast } = useToast();
   const [data, setData] = useState<(DashboardSummary & { today_log_submitted?: boolean }) | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -165,19 +167,19 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!selectedUser) return;
     if (newPassword !== confirmPassword) {
-      alert("Passwords do not match.");
+      toast({ variant: "destructive", title: "Mismatch", description: "Passwords do not match." });
       return;
     }
 
     setResetting(true);
     try {
       await api.put(`/users/${selectedUser.id}/password`, { password: newPassword });
-      alert(`Password for ${selectedUser.full_name} has been reset.`);
+      toast({ title: "Password updated", description: `Password for ${selectedUser.full_name} has been reset.` });
       setSelectedUser(null);
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      alert(err.message || "Failed to reset password");
+      toast({ variant: "destructive", title: "Failed to reset password", description: err.message || "Failed to reset password" });
     } finally {
       setResetting(false);
     }
