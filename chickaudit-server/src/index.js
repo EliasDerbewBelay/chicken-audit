@@ -50,6 +50,16 @@ app.use((err, _req, res, _next) => {
 
 // ── Start ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
+// Auto-run migrations on startup
+const { execSync } = require('child_process');
+try {
+  console.log('Running migrations...');
+  execSync('node src/db/migrate.js', { stdio: 'inherit' });
+  console.log('Migrations complete.');
+} catch (err) {
+  console.error('Migration failed:', err.message);
+}
+
 app.listen(PORT, () => {
   console.log(`🐔  ChickAudit API running on http://localhost:${PORT}`);
 });
