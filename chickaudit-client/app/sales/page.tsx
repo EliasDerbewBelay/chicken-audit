@@ -112,8 +112,8 @@ export default function SalesPage() {
         buyer: form.buyer || null,
       });
       toast({
-        title: "Sale recorded",
-        description: `${formatETB(Number(form.amount_etb))} sale saved.`,
+        title: t("Sale recorded", language),
+        description: `${formatETB(Number(form.amount_etb))} ${t("sale saved", language)}.`,
       });
       setModalOpen(false);
       setForm({
@@ -127,7 +127,7 @@ export default function SalesPage() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to save",
+        title: t("Failed to save", language),
         description: err.message,
       });
     } finally {
@@ -148,15 +148,15 @@ export default function SalesPage() {
         buyer: editForm.buyer || null,
       });
       toast({
-        title: "Sale updated",
-        description: "Sale changes saved successfully.",
+        title: t("Sale updated", language),
+        description: t("Sale changes saved successfully.", language),
       });
       setEditingSale(null);
       fetchSales();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to update",
+        title: t("Failed to update", language),
         description: err.message,
       });
     } finally {
@@ -170,15 +170,15 @@ export default function SalesPage() {
     try {
       await api.delete(`/sales/${deletingSale.id}`);
       toast({
-        title: "Sale deleted",
-        description: "The sale record has been deleted.",
+        title: t("Sale deleted", language),
+        description: t("The sale record has been deleted.", language),
       });
       setDeletingSale(null);
       fetchSales();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to delete",
+        title: t("Failed to delete", language),
         description: err.message,
       });
     } finally {
@@ -224,7 +224,7 @@ export default function SalesPage() {
               {t("Sales", language)}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {sales.length} sales recorded
+              {sales.length} {t("sales recorded", language)}
             </p>
           </div>
           <Button className="h-11" onClick={() => setModalOpen(true)}>
@@ -237,10 +237,10 @@ export default function SalesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-2.5 mb-4 bg-muted/40 p-4 rounded-xl border border-border">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                Search buyer or type...
+                {t("Search buyer or type...", language)}
               </Label>
               <Input
-                placeholder="Search buyer or type..."
+                placeholder={t("Search buyer or type...", language)}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-9 text-xs bg-card"
@@ -248,7 +248,7 @@ export default function SalesPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                From
+                {t("From", language)}
               </Label>
               <Input
                 type="date"
@@ -259,7 +259,7 @@ export default function SalesPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                To
+                {t("To", language)}
               </Label>
               <Input
                 type="date"
@@ -280,7 +280,7 @@ export default function SalesPage() {
                   }}
                   className="h-9"
                 >
-                  Clear
+                  {t("Clear", language)}
                 </Button>
               ) : (
                 <div className="h-9" />
@@ -289,8 +289,8 @@ export default function SalesPage() {
           </div>
 
           <div className="text-sm text-muted-foreground px-6 py-2 border-b border-border/50">
-            This month: ETB {formatETB(totalMonth)} total across {monthCount}{" "}
-            sales
+            {t("This month", language)}: ETB {formatETB(totalMonth)} {t("total across", language)} {monthCount}{" "}
+            {t("sales", language)}
           </div>
 
           {loading ? (
@@ -309,8 +309,8 @@ export default function SalesPage() {
                           className="p-8 text-center text-sm text-muted-foreground"
                         >
                           {searchTerm || startDate || endDate
-                            ? "No sales match your filters. Try clearing them."
-                            : "No sales recorded yet. Add your first sale."}
+                            ? t("No sales match your filters. Try clearing them.", language)
+                            : t("No sales recorded yet. Add your first sale.", language)}
                         </td>
                       </tr>
                     </tbody>
@@ -321,14 +321,14 @@ export default function SalesPage() {
                   <table className="min-w-full text-left border-collapse">
                     <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
                       <tr>
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4 text-right">Quantity</th>
-                        <th className="py-3 px-4 text-right">Amount (ETB)</th>
-                        <th className="py-3 px-4">Buyer</th>
-                        <th className="py-3 px-4">Recorded by</th>
+                        <th className="py-3 px-4">{t("Date", language)}</th>
+                        <th className="py-3 px-4">{t("Type", language)}</th>
+                        <th className="py-3 px-4 text-right">{t("Quantity", language)}</th>
+                        <th className="py-3 px-4 text-right">{t("Amount (ETB)", language)}</th>
+                        <th className="py-3 px-4">{t("Buyer", language)}</th>
+                        <th className="py-3 px-4">{t("Recorded by", language)}</th>
                         {user?.role === "owner" && (
-                          <th className="py-3 px-4 text-center">Delete</th>
+                          <th className="py-3 px-4 text-center">{t("Delete", language)}</th>
                         )}
                       </tr>
                     </thead>
@@ -352,7 +352,7 @@ export default function SalesPage() {
                             )}
                           >
                             <td className="py-3 px-4 whitespace-nowrap">
-                              {formatDate(sale.sale_date)}
+                              {formatDate(sale.sale_date, language)}
                             </td>
                             <td className="py-3 px-4 whitespace-nowrap">
                               <span
@@ -363,7 +363,7 @@ export default function SalesPage() {
                                     : "bg-amber-accent/15 text-amber-accent",
                                 )}
                               >
-                                {sale.type}
+                                {t(sale.type, language)}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right font-medium tabular-nums whitespace-nowrap">
@@ -505,14 +505,14 @@ export default function SalesPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
-              <h3 className="text-lg font-bold text-foreground">Edit Sale</h3>
+              <h3 className="text-lg font-bold text-foreground">{t("Edit Sale", language)}</h3>
               <p className="text-sm text-muted-foreground">
-                Modify recorded data for this sale.
+                {t("Modify recorded data for this sale.", language)}
               </p>
             </div>
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="edit_sale_date">Date</Label>
+                <Label htmlFor="edit_sale_date">{t("Date", language)}</Label>
                 <Input
                   id="edit_sale_date"
                   type="date"
@@ -524,7 +524,7 @@ export default function SalesPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_type">Type</Label>
+                <Label htmlFor="edit_type">{t("Type", language)}</Label>
                 <Select
                   value={editForm.type}
                   onValueChange={(v) => setEditForm({ ...editForm, type: v })}
@@ -533,14 +533,14 @@ export default function SalesPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="eggs">Eggs</SelectItem>
-                    <SelectItem value="broiler">Broiler chickens</SelectItem>
+                    <SelectItem value="eggs">{t("Eggs", language)}</SelectItem>
+                    <SelectItem value="broiler">{t("Broiler chickens", language)}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit_qty">Quantity</Label>
+                  <Label htmlFor="edit_qty">{t("Quantity", language)}</Label>
                   <Input
                     id="edit_qty"
                     type="number"
@@ -554,7 +554,7 @@ export default function SalesPage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="edit_amt">Amount (ETB)</Label>
+                  <Label htmlFor="edit_amt">{t("Amount (ETB)", language)}</Label>
                   <Input
                     id="edit_amt"
                     type="number"
@@ -568,7 +568,7 @@ export default function SalesPage() {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_buyer">Buyer</Label>
+                <Label htmlFor="edit_buyer">{t("Buyer", language)}</Label>
                 <Input
                   id="edit_buyer"
                   value={editForm.buyer}
@@ -584,13 +584,13 @@ export default function SalesPage() {
                   onClick={() => setEditingSale(null)}
                   disabled={updating}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={updating}>
                   {updating && (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
-                  Save Changes
+                  {t("Save Changes", language)}
                 </Button>
               </div>
             </form>

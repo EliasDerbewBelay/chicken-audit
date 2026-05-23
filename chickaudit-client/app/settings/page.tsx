@@ -61,7 +61,7 @@ export default function SettingsPage() {
 
     const flockValue = Number(startingFlock);
     if (Number.isNaN(flockValue) || flockValue < 0) {
-      setError("Starting flock must be a valid non-negative number.");
+      setError(t("Starting flock must be a valid non-negative number.", language));
       return;
     }
 
@@ -70,7 +70,7 @@ export default function SettingsPage() {
       await api.put("/settings", { starting_flock: flockValue });
       toast({ title: t("Settings saved", language) });
     } catch (err: any) {
-      setError(err?.message || "Unable to save settings.");
+      setError(err?.message || t("Unable to save settings.", language));
     } finally {
       setSaving(false);
     }
@@ -94,9 +94,9 @@ export default function SettingsPage() {
       ) : !isOwner ? (
         <Card>
           <CardHeader>
-            <CardTitle>Access denied</CardTitle>
+            <CardTitle>{t("Access denied", language)}</CardTitle>
             <CardDescription>
-              Only the farm owner can view and update settings on this page.
+              {t("Only the farm owner can view and update settings on this page.", language)}
             </CardDescription>
           </CardHeader>
         </Card>

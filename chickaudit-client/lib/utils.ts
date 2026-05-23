@@ -14,9 +14,18 @@ export function formatETB(amount: number | null | undefined) {
   })}`;
 }
 
-export function formatDate(dateStr: string | null | undefined) {
+export function formatDate(dateStr: string | null | undefined, language: "en" | "am" = "en") {
   if (!dateStr) return "N/A";
-  return new Date(dateStr).toLocaleDateString("en-ET", {
+  const date = new Date(dateStr);
+  if (language === "am") {
+    return date.toLocaleDateString("am-ET", {
+      calendar: "ethiopic",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  }
+  return date.toLocaleDateString("en-ET", {
     day: "numeric",
     month: "short",
     year: "numeric",

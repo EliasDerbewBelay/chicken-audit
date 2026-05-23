@@ -56,7 +56,7 @@ export default function UsersPage() {
       .then(setUsers)
       .catch((err) => {
         console.error(err);
-        toast({ variant: "destructive", title: "Error", description: "Failed to load users." });
+        toast({ variant: "destructive", title: t("Error", language), description: t("Failed to load users.", language) });
       })
       .finally(() => setLoading(false));
   }
@@ -66,11 +66,11 @@ export default function UsersPage() {
     setSaving(true);
     try {
       await api.post("/users", form);
-      toast({ title: "User created", description: `${form.full_name} has been added.` });
+      toast({ title: t("User created", language), description: `${form.full_name} ${t("has been added.", language)}` });
       setForm({ full_name: "", email: "", password: "", role: "employee" });
       fetchUsers();
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Failed to create user", description: err.message });
+      toast({ variant: "destructive", title: t("Failed to create user", language), description: err.message });
     } finally {
       setSaving(false);
     }
@@ -80,19 +80,19 @@ export default function UsersPage() {
     e.preventDefault();
     if (!selectedUser) return;
     if (newPassword !== confirmPassword) {
-      toast({ variant: "destructive", title: "Mismatch", description: "Passwords do not match." });
+      toast({ variant: "destructive", title: t("Mismatch", language), description: t("Passwords do not match.", language) });
       return;
     }
 
     setResetting(true);
     try {
       await api.put(`/users/${selectedUser.id}/password`, { password: newPassword });
-      toast({ title: "Password updated", description: `Password for ${selectedUser.full_name} has been reset.` });
+      toast({ title: t("Password updated", language), description: `${t("Password for", language)} ${selectedUser.full_name} ${t("has been reset.", language)}` });
       setSelectedUser(null);
       setNewPassword("");
       setConfirmPassword("");
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Failed to reset password", description: err.message });
+      toast({ variant: "destructive", title: t("Failed to reset password", language), description: err.message });
     } finally {
       setResetting(false);
     }
@@ -102,8 +102,8 @@ export default function UsersPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
         <Shield className="w-12 h-12 text-destructive animate-pulse" />
-        <h2 className="text-xl font-bold">Access Denied</h2>
-        <p className="text-sm text-muted-foreground">Only owners can access this page. Redirecting...</p>
+        <h2 className="text-xl font-bold">{t("Access Denied", language)}</h2>
+        <p className="text-sm text-muted-foreground">{t("Only owners can access this page. Redirecting...", language)}</p>
         <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
       </div>
     );
@@ -186,7 +186,7 @@ export default function UsersPage() {
             ) : (
               <div className="divide-y divide-border bg-card">
                 {users.length === 0 && (
-                  <p className="text-sm text-muted-foreground py-4 text-center">No users found.</p>
+                  <p className="text-sm text-muted-foreground py-4 text-center">{t("No users found.", language)}</p>
                 )}
                 {users.map((u) => (
                   <div key={u.id} className="py-4 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
@@ -231,24 +231,24 @@ export default function UsersPage() {
             </div>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="new_password">New Password</Label>
+                <Label htmlFor="new_password">{t("New Password", language)}</Label>
                 <Input
                   id="new_password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  placeholder={t("Min 6 characters", language)}
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                <Label htmlFor="confirm_password">{t("Confirm New Password", language)}</Label>
                 <Input
                   id="confirm_password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Verify password"
+                  placeholder={t("Verify password", language)}
                   required
                 />
               </div>

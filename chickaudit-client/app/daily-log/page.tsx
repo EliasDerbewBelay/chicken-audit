@@ -114,8 +114,8 @@ export default function DailyLogPage() {
         notes: form.notes || null,
       });
       toast({
-        title: "Log saved",
-        description: `${form.eggs_collected} eggs recorded.`,
+        title: t("Log saved", language),
+        description: `${form.eggs_collected} ${t("eggs recorded", language)}.`,
       });
       setModalOpen(false);
       setForm({
@@ -129,7 +129,7 @@ export default function DailyLogPage() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to save",
+        title: t("Failed to save", language),
         description: err.message,
       });
     } finally {
@@ -150,15 +150,15 @@ export default function DailyLogPage() {
         notes: editForm.notes || null,
       });
       toast({
-        title: "Log updated",
-        description: "Daily log changes saved successfully.",
+        title: t("Log updated", language),
+        description: t("Daily log changes saved successfully.", language),
       });
       setEditingLog(null);
       fetchLogs();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to update",
+        title: t("Failed to update", language),
         description: err.message,
       });
     } finally {
@@ -172,15 +172,15 @@ export default function DailyLogPage() {
     try {
       await api.delete(`/daily-logs/${deletingLog.id}`);
       toast({
-        title: "Log deleted",
-        description: "The daily log has been deleted.",
+        title: t("Log deleted", language),
+        description: t("The daily log has been deleted.", language),
       });
       setDeletingLog(null);
       fetchLogs();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to delete",
+        title: t("Failed to delete", language),
         description: err.message,
       });
     } finally {
@@ -203,7 +203,7 @@ export default function DailyLogPage() {
               {t("Recent logs", language)}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {logs.length} entries recorded
+              {logs.length} {t("entries recorded", language)}
             </p>
           </div>
           <Button className="h-11" onClick={() => setModalOpen(true)}>
@@ -216,10 +216,10 @@ export default function DailyLogPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-2.5 mb-4 bg-muted/40 p-4 rounded-xl border border-border">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                Search notes or logger...
+                {t("Search notes or logger...", language)}
               </Label>
               <Input
-                placeholder="Search notes or logger..."
+                placeholder={t("Search notes or logger...", language)}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-9 text-xs bg-card"
@@ -227,7 +227,7 @@ export default function DailyLogPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                From
+                {t("From", language)}
               </Label>
               <Input
                 type="date"
@@ -238,7 +238,7 @@ export default function DailyLogPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                To
+                {t("To", language)}
               </Label>
               <Input
                 type="date"
@@ -259,7 +259,7 @@ export default function DailyLogPage() {
                   }}
                   className="h-9"
                 >
-                  Clear
+                  {t("Clear", language)}
                 </Button>
               ) : (
                 <div className="h-9" />
@@ -283,8 +283,8 @@ export default function DailyLogPage() {
                           className="p-8 text-center text-sm text-muted-foreground"
                         >
                           {searchTerm || startDate || endDate
-                            ? "No logs found. Try clearing the filters."
-                            : "Add your first entry."}
+                            ? t("No logs found. Try clearing the filters.", language)
+                            : t("Add your first entry.", language)}
                         </td>
                       </tr>
                     </tbody>
@@ -295,14 +295,14 @@ export default function DailyLogPage() {
                   <table className="w-full text-left border-collapse">
                     <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
                       <tr>
-                        <th className="p-3">Date</th>
-                        <th className="p-3">Eggs collected</th>
-                        <th className="p-3">Feed given (kg)</th>
-                        <th className="p-3">Deaths</th>
-                        <th className="p-3">Recorded by</th>
-                        <th className="p-3">Notes</th>
+                        <th className="p-3">{t("Date", language)}</th>
+                        <th className="p-3">{t("Eggs collected", language)}</th>
+                        <th className="p-3">{t("Feed given (kg)", language)}</th>
+                        <th className="p-3">{t("Deaths", language)}</th>
+                        <th className="p-3">{t("Recorded by", language)}</th>
+                        <th className="p-3">{t("Notes", language)}</th>
                         {user?.role === "owner" && (
-                          <th className="p-3 text-center">Delete</th>
+                          <th className="p-3 text-center">{t("Delete", language)}</th>
                         )}
                       </tr>
                     </thead>
@@ -326,13 +326,13 @@ export default function DailyLogPage() {
                             )}
                           >
                             <td className="p-3 whitespace-nowrap">
-                              {formatDate(log.log_date)}
+                              {formatDate(log.log_date, language)}
                             </td>
                             <td className="p-3 font-medium whitespace-nowrap">
-                              {log.eggs_collected} eggs
+                              {log.eggs_collected} {t("eggs", language)}
                             </td>
                             <td className="p-3 font-medium whitespace-nowrap">
-                              {Number(log.feed_given_kg).toFixed(2)} kg
+                              {Number(log.feed_given_kg).toFixed(2)} {t("kg", language)}
                             </td>
                             <td className="p-3 whitespace-nowrap">
                               <span
@@ -393,7 +393,7 @@ export default function DailyLogPage() {
                 {t("New entry", language)}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Record a new daily log entry.
+                {t("Record a new daily log entry.", language)}
               </p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -452,7 +452,7 @@ export default function DailyLogPage() {
                   onClick={() => setModalOpen(false)}
                   disabled={saving}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -470,15 +470,15 @@ export default function DailyLogPage() {
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">
-                Edit Daily Log
+                {t("Edit Daily Log", language)}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Modify recorded data for this day.
+                {t("Modify recorded data for this day.", language)}
               </p>
             </div>
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="edit_log_date">Date</Label>
+                <Label htmlFor="edit_log_date">{t("Date", language)}</Label>
                 <Input
                   id="edit_log_date"
                   type="date"
@@ -490,7 +490,7 @@ export default function DailyLogPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_eggs">Eggs collected</Label>
+                <Label htmlFor="edit_eggs">{t("Eggs collected", language)}</Label>
                 <Input
                   id="edit_eggs"
                   type="number"
@@ -503,7 +503,7 @@ export default function DailyLogPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_feed">Feed given (kg)</Label>
+                <Label htmlFor="edit_feed">{t("Feed given (kg)", language)}</Label>
                 <Input
                   id="edit_feed"
                   type="number"
@@ -517,7 +517,7 @@ export default function DailyLogPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_deaths">Deaths</Label>
+                <Label htmlFor="edit_deaths">{t("Deaths", language)}</Label>
                 <Input
                   id="edit_deaths"
                   type="number"
@@ -530,7 +530,7 @@ export default function DailyLogPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_notes">Notes</Label>
+                <Label htmlFor="edit_notes">{t("Notes", language)}</Label>
                 <Input
                   id="edit_notes"
                   value={editForm.notes}
@@ -546,13 +546,13 @@ export default function DailyLogPage() {
                   onClick={() => setEditingLog(null)}
                   disabled={updating}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={updating}>
                   {updating && (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
-                  Save Changes
+                  {t("Save Changes", language)}
                 </Button>
               </div>
             </form>
@@ -571,7 +571,7 @@ export default function DailyLogPage() {
               <p className="text-sm text-muted-foreground mt-2">
                 {t("You are about to permanently delete", language)}{" "}
                 <span className="font-semibold">
-                  {formatDate(deletingLog.log_date)}
+                  {formatDate(deletingLog.log_date, language)}
                 </span>
                 ? {t("This cannot be undone", language)}.
               </p>

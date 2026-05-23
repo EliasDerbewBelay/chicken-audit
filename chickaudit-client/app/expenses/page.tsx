@@ -132,8 +132,8 @@ export default function ExpensesPage() {
         supplier: form.supplier || null,
       });
       toast({
-        title: "Expense recorded",
-        description: `${formatETB(Number(form.amount_etb))} expense saved.`,
+        title: t("Expense recorded", language),
+        description: `${formatETB(Number(form.amount_etb))} ${t("expense saved", language)}.`,
       });
       setModalOpen(false);
       setForm({
@@ -146,7 +146,7 @@ export default function ExpensesPage() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to save",
+        title: t("Failed to save", language),
         description: err.message,
       });
     } finally {
@@ -166,15 +166,15 @@ export default function ExpensesPage() {
         supplier: editForm.supplier || null,
       });
       toast({
-        title: "Expense updated",
-        description: "Expense changes saved successfully.",
+        title: t("Expense updated", language),
+        description: t("Expense changes saved successfully.", language),
       });
       setEditingExpense(null);
       fetchExpenses();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to update",
+        title: t("Failed to update", language),
         description: err.message,
       });
     } finally {
@@ -188,15 +188,15 @@ export default function ExpensesPage() {
     try {
       await api.delete(`/expenses/${deletingExpense.id}`);
       toast({
-        title: "Expense deleted",
-        description: "The expense record has been deleted.",
+        title: t("Expense deleted", language),
+        description: t("The expense record has been deleted.", language),
       });
       setDeletingExpense(null);
       fetchExpenses();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to delete",
+        title: t("Failed to delete", language),
         description: err.message,
       });
     } finally {
@@ -249,7 +249,7 @@ export default function ExpensesPage() {
               {t("Expenses", language)}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {expenses.length} expenses recorded
+              {expenses.length} {t("expenses recorded", language)}
             </p>
           </div>
           <Button className="h-11" onClick={() => setModalOpen(true)}>
@@ -261,10 +261,10 @@ export default function ExpensesPage() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-2.5 mb-4 bg-muted/40 p-4 rounded-xl border border-border">
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                Search supplier or category
+                {t("Search supplier or category", language)}
               </Label>
               <Input
-                placeholder="Search supplier or category..."
+                placeholder={t("Search supplier or category...", language)}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="h-9 text-xs bg-card"
@@ -272,17 +272,17 @@ export default function ExpensesPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                Category
+                {t("Category", language)}
               </Label>
               <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="h-9 w-[160px] text-xs bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">{t("All", language)}</SelectItem>
                   {CATEGORIES.map((c) => (
                     <SelectItem key={c.value} value={c.value}>
-                      {c.label}
+                      {t(c.label, language)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -290,7 +290,7 @@ export default function ExpensesPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                From
+                {t("From", language)}
               </Label>
               <Input
                 type="date"
@@ -301,7 +301,7 @@ export default function ExpensesPage() {
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                To
+                {t("To", language)}
               </Label>
               <Input
                 type="date"
@@ -326,7 +326,7 @@ export default function ExpensesPage() {
                   }}
                   className="h-9"
                 >
-                  Clear
+                  {t("Clear", language)}
                 </Button>
               ) : (
                 <div className="h-9" />
@@ -335,8 +335,8 @@ export default function ExpensesPage() {
           </div>
 
           <div className="text-sm text-muted-foreground px-6 py-2 border-b border-border/50">
-            {t("This month", language)}: ETB {formatETB(totalMonth)} across{" "}
-            {monthCount} expenses
+            {t("This month", language)}: ETB {formatETB(totalMonth)} {t("across", language)}{" "}
+            {monthCount} {t("expenses", language)}
           </div>
 
           {categoryBreakdown.length > 0 && (
@@ -346,7 +346,7 @@ export default function ExpensesPage() {
                   key={entry.category}
                   className="bg-muted rounded-full px-3 py-1"
                 >
-                  {entry.label} ETB {formatETB(entry.amount)}
+                  {t(entry.label, language)} ETB {formatETB(entry.amount)}
                 </span>
               ))}
             </div>
@@ -422,7 +422,7 @@ export default function ExpensesPage() {
                             )}
                           >
                             <td className="py-3 px-4 whitespace-nowrap">
-                              {formatDate(ex.expense_date)}
+                              {formatDate(ex.expense_date, language)}
                             </td>
                             <td className="py-3 px-4 whitespace-nowrap">
                               <span
@@ -432,7 +432,10 @@ export default function ExpensesPage() {
                                     "bg-muted text-muted-foreground",
                                 )}
                               >
-                                {ex.category}
+                                {t(
+                                  CATEGORIES.find((c) => c.value === ex.category)?.label || ex.category,
+                                  language
+                                )}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right font-medium text-[hsl(var(--expense))] tabular-nums whitespace-nowrap">
@@ -559,15 +562,15 @@ export default function ExpensesPage() {
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">
-                Edit Expense
+                {t("Edit Expense", language)}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Modify recorded data for this expense.
+                {t("Modify recorded data for this expense.", language)}
               </p>
             </div>
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="edit_exp_date">Date</Label>
+                <Label htmlFor="edit_exp_date">{t("Date", language)}</Label>
                 <Input
                   id="edit_exp_date"
                   type="date"
@@ -579,7 +582,7 @@ export default function ExpensesPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_category">Category</Label>
+                <Label htmlFor="edit_category">{t("Category", language)}</Label>
                 <Select
                   value={editForm.category}
                   onValueChange={(v) =>
@@ -592,14 +595,14 @@ export default function ExpensesPage() {
                   <SelectContent>
                     {CATEGORIES.map((c) => (
                       <SelectItem key={c.value} value={c.value}>
-                        {c.label}
+                        {t(c.label, language)}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_exp_amt">Amount (ETB)</Label>
+                <Label htmlFor="edit_exp_amt">{t("Amount (ETB)", language)}</Label>
                 <Input
                   id="edit_exp_amt"
                   type="number"
@@ -612,7 +615,7 @@ export default function ExpensesPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_supplier">Supplier / note</Label>
+                <Label htmlFor="edit_supplier">{t("Supplier / note", language)}</Label>
                 <Input
                   id="edit_supplier"
                   value={editForm.supplier}
@@ -628,13 +631,13 @@ export default function ExpensesPage() {
                   onClick={() => setEditingExpense(null)}
                   disabled={updating}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={updating}>
                   {updating && (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
-                  Save Changes
+                  {t("Save Changes", language)}
                 </Button>
               </div>
             </form>

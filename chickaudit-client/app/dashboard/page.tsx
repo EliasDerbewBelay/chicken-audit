@@ -82,7 +82,7 @@ export default function DashboardPage() {
       entries.push({
         id: l.id,
         type: "log",
-        description: `${l.eggs_collected} eggs collected`,
+        description: `${l.eggs_collected} ${t("eggs collected", language)}`,
         recorded_by_name: l.logged_by_name ?? "Employee",
         date: l.log_date,
       });
@@ -91,7 +91,7 @@ export default function DashboardPage() {
       entries.push({
         id: s.id,
         type: "sale",
-        description: `${s.quantity} ${s.type === "eggs" ? "trays" : "birds"} sold`,
+        description: `${s.quantity} ${s.type === "eggs" ? t("trays", language) : t("birds", language)} ${t("sold", language)}`,
         amount: Number(s.amount_etb),
         recorded_by_name: s.recorded_by_name ?? "Employee",
         date: s.sale_date,
@@ -101,7 +101,7 @@ export default function DashboardPage() {
       entries.push({
         id: e.id,
         type: "expense",
-        description: `${t(e.category, language)}: ${e.supplier || "Farm purchase"}`,
+        description: `${t(e.category, language)}: ${e.supplier || t("Farm purchase", language)}`,
         amount: Number(e.amount_etb),
         recorded_by_name: e.recorded_by_name ?? "Employee",
         date: e.expense_date,
@@ -203,7 +203,8 @@ export default function DashboardPage() {
   const eggChange = data ? data.eggs_today - data.eggs_yesterday : 0;
   const netMonth = data ? data.revenue_month - data.expenses_month : 0;
 
-  const dateString = new Date().toLocaleDateString("en-ET", {
+  const dateString = new Date().toLocaleDateString(language === "am" ? "am-ET" : "en-ET", {
+    calendar: language === "am" ? "ethiopic" : undefined,
     weekday: "long",
     day: "numeric",
     month: "long",
@@ -282,31 +283,31 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
-              <h3 className="text-lg font-bold text-foreground">Reset password</h3>
+              <h3 className="text-lg font-bold text-foreground">{t("Reset password", language)}</h3>
               <p className="text-sm text-muted-foreground">
-                Set a new password for <span className="font-semibold">{selectedUser.full_name}</span>.
+                {t("Set a new password for", language)} <span className="font-semibold">{selectedUser.full_name}</span>.
               </p>
             </div>
             <form onSubmit={handleResetPassword} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="new_password">New Password</Label>
+                <Label htmlFor="new_password">{t("New Password", language)}</Label>
                 <Input
                   id="new_password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  placeholder={t("Min 6 characters", language)}
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="confirm_password">Confirm New Password</Label>
+                <Label htmlFor="confirm_password">{t("Confirm New Password", language)}</Label>
                 <Input
                   id="confirm_password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Verify password"
+                  placeholder={t("Verify password", language)}
                   required
                 />
               </div>
@@ -321,11 +322,11 @@ export default function DashboardPage() {
                   }}
                   disabled={resetting}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={resetting}>
                   {resetting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Save password
+                  {t("Save password", language)}
                 </Button>
               </div>
             </form>
@@ -414,21 +415,19 @@ function avatarColor(name: string) {
   return AVATAR_COLORS[i]
 }
 
-function formatEntryDescription(entry: RecentEntry): string {
+function formatEntryDescription(entry: RecentEntry, language: "en" | "am"): string {
   switch (entry.type) {
     case 'sale':
-      return entry.description // already formatted as "X eggs" or "X broilers"
+      return entry.description;
     case 'expense':
-      // Capitalize category and append amount for clarity
-      const cat = entry.description.charAt(0).toUpperCase() + entry.description.slice(1)
-      return `${cat} purchase`
+      const cat = entry.description.charAt(0).toUpperCase() + entry.description.slice(1);
+      return language === "am" ? `${cat} ግዢ` : `${cat} purchase`;
     case 'log':
-      return entry.description // already "X eggs collected"
+      return entry.description;
     case 'health':
-      // Replace underscores, capitalize
-      return entry.description.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+      return entry.description.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     default:
-      return entry.description
+      return entry.description;
   }
 }
 
@@ -509,15 +508,15 @@ function OwnerDashboardView({
         {/* Left: 7-day Egg Chart */}
         <Card className="lg:col-span-3 flex flex-col h-[340px] overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between py-3 px-5 shrink-0">
-            <CardTitle className="text-sm font-semibold">7-day egg production</CardTitle>
+            <CardTitle className="text-sm font-semibold">{t("7-day egg production", language)}</CardTitle>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm bg-primary inline-block"/>
-                Today
+                {t("Today", language)}
               </span>
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-sm bg-muted inline-block"/>
-                Previous days
+                {t("Previous days", language)}
               </span>
             </div>
           </CardHeader>
@@ -529,7 +528,7 @@ function OwnerDashboardView({
                   dataKey="date"
                   tickFormatter={(d) => {
                     try {
-                      return new Date(d).toLocaleDateString("en-ET", { weekday: "short" });
+                      return new Date(d).toLocaleDateString(language === "am" ? "am-ET" : "en-ET", { calendar: language === "am" ? "ethiopic" : undefined, weekday: "short" });
                     } catch (e) {
                       return d;
                     }
@@ -558,8 +557,8 @@ function OwnerDashboardView({
                     color: 'hsl(var(--foreground))',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
                   }}
-                  formatter={(v: number) => [`${v} eggs`, '']}
-                  labelFormatter={(d) => formatDate(d)}
+                  formatter={(v: number) => [`${v} ${t("eggs", language)}`, '']}
+                  labelFormatter={(d) => formatDate(d, language)}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]} cursor="pointer" maxBarSize={48} minPointSize={6}>
                   <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}/>
@@ -579,8 +578,8 @@ function OwnerDashboardView({
         <Card className="lg:col-span-2 flex flex-col h-[340px] overflow-hidden">
           {/* Entries header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">Recent entries</p>
-            <Link href="/daily-log" className="text-xs text-primary hover:underline font-medium">View all</Link>
+            <p className="text-sm font-semibold text-foreground">{t("Recent entries", language)}</p>
+            <Link href="/daily-log" className="text-xs text-primary hover:underline font-medium">{t("View all", language)}</Link>
           </div>
 
           {/* Entries list */}
@@ -596,14 +595,14 @@ function OwnerDashboardView({
                 )}/>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-foreground truncate">
-                    {formatEntryDescription(entry)}
+                    {formatEntryDescription(entry, language)}
                   </p>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={cn("w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-semibold shrink-0", avatarColor(entry.recorded_by_name))}>
                       {entry.recorded_by_name?.slice(0, 1).toUpperCase()}
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {entry.recorded_by_name} · {formatDate(entry.date)}
+                      {entry.recorded_by_name} · {formatDate(entry.date, language)}
                     </span>
                   </div>
                 </div>
@@ -618,7 +617,7 @@ function OwnerDashboardView({
                   </span>
                 ) : entry.type === 'log' || entry.type === 'health' ? (
                   <Badge variant="secondary" className="text-xs shrink-0">
-                    {entry.type === 'log' ? 'Log' : 'Health'}
+                    {t(entry.type === 'log' ? 'Log' : 'Health', language)}
                   </Badge>
                 ) : null}
               </div>
@@ -631,7 +630,7 @@ function OwnerDashboardView({
       <Card className="rounded-xl border-border bg-card shadow-sm p-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-            Farm activity
+            {t("Farm activity", language)}
           </h4>
           <div className="flex flex-wrap gap-1">
             {(["all", "sale", "expense", "log", "health"] as const).map((type) => (
@@ -645,7 +644,7 @@ function OwnerDashboardView({
                     : "bg-muted/40 hover:bg-muted text-muted-foreground border-border"
                 )}
               >
-                {type === "log" ? "Logs" : type === "all" ? "All" : type}
+                {t(type === "log" ? "Logs" : type === "all" ? "All" : type, language)}
               </button>
             ))}
           </div>
@@ -656,26 +655,26 @@ function OwnerDashboardView({
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead className="bg-muted/30 border-b border-border/50">
                 <tr>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Date</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider w-full">Description</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Recorded By</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-right">Amount</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-center">Action</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("Date", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider w-full">{t("Description", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("Type", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("Recorded By", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-right">{t("Amount", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-center">{t("Action", language)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
                 {filteredRecentEntries.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
-                      No entries found matching this filter.
+                      {t("No entries found matching this filter.", language)}
                     </td>
                   </tr>
                 ) : (
                   filteredRecentEntries.map((entry) => (
                     <tr key={entry.id} className="text-sm hover:bg-muted/30 transition-colors group">
                       <td className="px-4 py-3 text-muted-foreground">
-                        {formatDate(entry.date).slice(0, 6)}
+                        {formatDate(entry.date, language).slice(0, 6)}
                       </td>
                       <td className="px-4 py-3 font-medium text-foreground">
                         <div className="flex items-center gap-3">
@@ -686,12 +685,12 @@ function OwnerDashboardView({
                             entry.type === 'log'     && "bg-primary/40",
                             entry.type === 'health'  && "bg-amber-400",
                           )}/>
-                          <span className="truncate max-w-[200px] sm:max-w-[300px]">{formatEntryDescription(entry)}</span>
+                          <span className="truncate max-w-[200px] sm:max-w-[300px]">{formatEntryDescription(entry, language)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
-                          {entry.type === "log" ? "Log" : entry.type}
+                          {t(entry.type === "log" ? "Log" : entry.type, language)}
                         </Badge>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
@@ -736,12 +735,12 @@ function OwnerDashboardView({
       <Card className="rounded-xl border-border bg-card shadow-sm p-4">
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-            Farm accounts
+            {t("Farm accounts", language)}
           </h4>
           <Link href="/users">
             <Button variant="outline" size="sm" className="h-7 text-[10px] font-bold gap-1 rounded-lg border-border hover:bg-muted">
               <Plus className="w-3 h-3" />
-              Add user
+              {t("Add user", language)}
             </Button>
           </Link>
         </div>
@@ -751,11 +750,11 @@ function OwnerDashboardView({
             <table className="w-full text-left border-collapse whitespace-nowrap">
               <thead className="bg-muted/30 border-b border-border/50">
                 <tr>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider w-full">Name</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Role</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Email</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Joined</th>
-                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-right pr-4">Actions</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider w-full">{t("Name", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("Role", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("Email", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">{t("Joined", language)}</th>
+                  <th className="px-4 py-3 text-[10px] uppercase font-bold text-muted-foreground tracking-wider text-right pr-4">{t("Actions", language)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -763,7 +762,7 @@ function OwnerDashboardView({
                   const initials = u.full_name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
                   const joinedDate = (() => {
                     try {
-                      return new Date(u.created_at).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+                      return new Date(u.created_at).toLocaleDateString(language === "am" ? "am-ET" : "en-US", { calendar: language === "am" ? "ethiopic" : undefined, month: "short", year: "numeric" });
                     } catch (e) {
                       return "Jan 2026";
                     }
@@ -787,11 +786,11 @@ function OwnerDashboardView({
                       <td className="px-4 py-3">
                         {u.role === "owner" ? (
                           <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium border-none shadow-none bg-emerald-500/10 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300">
-                            Owner
+                            {t("Owner", language)}
                           </Badge>
                         ) : (
                           <Badge variant="secondary" className="text-[10px] px-2 py-0.5 font-medium border-none shadow-none">
-                            Employee
+                            {t("Employee", language)}
                           </Badge>
                         )}
                       </td>
@@ -805,7 +804,7 @@ function OwnerDashboardView({
                           className="h-8 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 gap-1.5 rounded-md px-3"
                         >
                           <KeyRound className="w-3 h-3" />
-                          Reset password
+                          {t("Reset password", language)}
                         </Button>
                       </td>
                     </tr>
@@ -879,7 +878,7 @@ function EmployeeDashboardView({ data, eggChange, netMonth, language }: Employee
                   dataKey="date"
                   tickFormatter={(d) => {
                     try {
-                      return new Date(d).toLocaleDateString("en-ET", { weekday: "short" });
+                      return new Date(d).toLocaleDateString(language === "am" ? "am-ET" : "en-ET", { calendar: language === "am" ? "ethiopic" : undefined, weekday: "short" });
                     } catch (e) {
                       return d;
                     }
@@ -891,7 +890,7 @@ function EmployeeDashboardView({ data, eggChange, netMonth, language }: Employee
                 <YAxis hide />
                 <Tooltip
                   formatter={(v: number) => [v, t("eggs", language)]}
-                  labelFormatter={(d) => formatDate(d)}
+                  labelFormatter={(d) => formatDate(d, language)}
                   contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))" }}
                 />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
@@ -913,8 +912,8 @@ function EmployeeDashboardView({ data, eggChange, netMonth, language }: Employee
             {(data?.recent_entries ?? []).slice(0, 5).map((entry: any) => (
               <div key={entry.id} className="flex items-center justify-between py-3 gap-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{entry.description}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{entry.recorded_by_name} · {formatDate(entry.date)}</p>
+                  <p className="text-sm font-medium text-foreground truncate">{formatEntryDescription(entry, language)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{entry.recorded_by_name} · {formatDate(entry.date, language)}</p>
                 </div>
                 {entry.amount !== undefined ? (
                   <span className={`text-sm font-semibold shrink-0 ${entry.type === "sale" ? "text-[hsl(var(--revenue))]" : "text-[hsl(var(--expense))]"}`}>

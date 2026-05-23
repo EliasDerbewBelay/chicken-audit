@@ -8,7 +8,7 @@ function requireAuth(req, res, next) {
 
   const token = header.slice(7);
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_please_change_in_production");
     req.user = payload; // { id, full_name, role }
     next();
   } catch {

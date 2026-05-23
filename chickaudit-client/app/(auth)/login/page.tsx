@@ -56,10 +56,10 @@ export default function LoginPage() {
 
         <div className="max-w-md my-auto">
           <h1 className="text-4xl font-bold tracking-tight mb-4">
-            የዶሮ እርሻ አስተዳደር
+            የዶሮ እርባታ አስተዳደር
           </h1>
           <p className="text-lg text-sidebar-fg/80 leading-relaxed font-light">
-            Poultry farm management built for professional agricultural enterprises.
+            {t("Poultry farm management built for professional agricultural enterprises.", language)}
           </p>
         </div>
 
@@ -77,7 +77,7 @@ export default function LoginPage() {
               <Feather className="w-6 h-6 text-primary-foreground" />
             </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">ChickAudit</h1>
-            <p className="text-xs text-muted-foreground">Family poultry farm management</p>
+            <p className="text-xs text-muted-foreground">{t("Family poultry farm management", language)}</p>
           </div>
 
           <div className="space-y-2 text-center md:text-left">

@@ -86,7 +86,7 @@ export default function ChickensPage() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to save",
+        title: t("Failed to save", language),
         description: err.message,
       });
     } finally {
@@ -130,17 +130,17 @@ export default function ChickensPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 mb-4 bg-muted/40 p-4 rounded-xl border border-border">
             <div className="space-y-1 md:col-span-1">
               <Label className="text-[10px] uppercase font-bold text-muted-foreground">
-                Filter by Type
+                {t("Filter by Type", language)}
               </Label>
               <Select value={typeFilter} onValueChange={setTypeFilter}>
                 <SelectTrigger className="h-9 text-xs bg-card">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="addition">Addition (e.g. bought)</SelectItem>
-                  <SelectItem value="reduction">Reduction (e.g. sold/removed)</SelectItem>
-                  <SelectItem value="audit">Audit (recount baseline)</SelectItem>
+                  <SelectItem value="all">{t("All Types", language)}</SelectItem>
+                  <SelectItem value="addition">{t("Addition (e.g. bought)", language)}</SelectItem>
+                  <SelectItem value="reduction">{t("Reduction (e.g. sold/removed)", language)}</SelectItem>
+                  <SelectItem value="audit">{t("Audit (recount baseline)", language)}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -159,8 +159,8 @@ export default function ChickensPage() {
                       <tr>
                         <td className="p-8 text-center text-sm text-muted-foreground">
                           {typeFilter !== "all"
-                            ? "No records match your filter."
-                            : "No flock records yet. Add your first adjustment."}
+                            ? t("No records match your filter.", language)
+                            : t("No flock records yet. Add your first adjustment.", language)}
                         </td>
                       </tr>
                     </tbody>
@@ -171,11 +171,11 @@ export default function ChickensPage() {
                   <table className="min-w-full text-left border-collapse">
                     <thead className="bg-muted/30 text-xs uppercase tracking-wider text-muted-foreground">
                       <tr>
-                        <th className="py-3 px-4">Date</th>
-                        <th className="py-3 px-4">Type</th>
-                        <th className="py-3 px-4 text-right">Quantity</th>
-                        <th className="py-3 px-4">Reason</th>
-                        <th className="py-3 px-4">Recorded by</th>
+                        <th className="py-3 px-4">{t("Date", language)}</th>
+                        <th className="py-3 px-4">{t("Type", language)}</th>
+                        <th className="py-3 px-4 text-right">{t("Quantity", language)}</th>
+                        <th className="py-3 px-4">{t("Reason", language)}</th>
+                        <th className="py-3 px-4">{t("Recorded by", language)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -211,7 +211,7 @@ export default function ChickensPage() {
                             )}
                           >
                             <td className="py-3 px-4 whitespace-nowrap">
-                              {formatDate(adj.date)}
+                              {formatDate(adj.date, language)}
                             </td>
                             <td className="py-3 px-4 whitespace-nowrap">
                               <span
@@ -220,7 +220,7 @@ export default function ChickensPage() {
                                   typeColor
                                 )}
                               >
-                                {adj.type}
+                                {t(adj.type, language)}
                               </span>
                             </td>
                             <td className={cn(
@@ -238,7 +238,7 @@ export default function ChickensPage() {
                                 {initials}
                               </span>
                               <span className="text-sm text-foreground truncate max-w-[110px]">
-                                {adj.recorded_by_name || "System"}
+                                {adj.recorded_by_name || t("System", language)}
                               </span>
                             </td>
                           </tr>
@@ -267,7 +267,7 @@ export default function ChickensPage() {
                 {t("New Chicken Record", language)}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Log a change to the active flock count.
+                {t("Log a change to the active flock count.", language)}
               </p>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -290,9 +290,9 @@ export default function ChickensPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="addition">Addition (e.g. bought new chicks)</SelectItem>
-                    <SelectItem value="reduction">Reduction (e.g. sold/removed)</SelectItem>
-                    <SelectItem value="audit">Audit (physical recount/set exact total)</SelectItem>
+                    <SelectItem value="addition">{t("Addition (e.g. bought new chicks)", language)}</SelectItem>
+                    <SelectItem value="reduction">{t("Reduction (e.g. sold/removed)", language)}</SelectItem>
+                    <SelectItem value="audit">{t("Audit (physical recount/set exact total)", language)}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -318,7 +318,7 @@ export default function ChickensPage() {
                   onClick={() => setModalOpen(false)}
                   disabled={saving}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={saving}>
                   {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

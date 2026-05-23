@@ -120,7 +120,7 @@ export default function HealthPage() {
     setSaving(true);
     try {
       await api.post("/health", form);
-      toast({ title: "Event logged" });
+      toast({ title: t("Event logged", language) });
       setForm({
         event_date: new Date().toISOString().split("T")[0],
         event_type: "death",
@@ -130,7 +130,7 @@ export default function HealthPage() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to save",
+        title: t("Failed to save", language),
         description: err.message,
       });
     } finally {
@@ -145,15 +145,15 @@ export default function HealthPage() {
     try {
       await api.put(`/health/${editingEvent.id}`, editForm);
       toast({
-        title: "Event updated",
-        description: "Health event changes saved successfully.",
+        title: t("Event updated", language),
+        description: t("Health event changes saved successfully.", language),
       });
       setEditingEvent(null);
       fetchEvents();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to update",
+        title: t("Failed to update", language),
         description: err.message,
       });
     } finally {
@@ -167,15 +167,15 @@ export default function HealthPage() {
     try {
       await api.delete(`/health/${deletingEvent.id}`);
       toast({
-        title: "Event deleted",
-        description: "The health event record has been deleted.",
+        title: t("Event deleted", language),
+        description: t("The health event record has been deleted.", language),
       });
       setDeletingEvent(null);
       fetchEvents();
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to delete",
+        title: t("Failed to delete", language),
         description: err.message,
       });
     } finally {
@@ -230,7 +230,7 @@ export default function HealthPage() {
               {t("Health events", language)}
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              {events.length} records logged
+              {events.length} {t("records logged", language)}
             </p>
           </div>
           <Button className="h-11" onClick={() => setModalOpen(true)}>
@@ -314,7 +314,7 @@ export default function HealthPage() {
           </div>
 
           <div className="text-sm text-muted-foreground px-6 py-2 border-b border-border/50">
-            {t("This month", language)}: {monthCount} events logged
+            {t("This month", language)}: {monthCount} {t("events logged", language)}
           </div>
 
           {Object.keys(eventBreakdown).length > 0 && (
@@ -387,7 +387,7 @@ export default function HealthPage() {
                           )}
                         >
                           <td className="py-3 px-4 whitespace-nowrap">
-                            {formatDate(ev.event_date)}
+                            {formatDate(ev.event_date, language)}
                           </td>
                           <td className="py-3 px-4 whitespace-nowrap">
                             <Badge
@@ -433,15 +433,15 @@ export default function HealthPage() {
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
               <h3 className="text-lg font-bold text-foreground">
-                Edit Health Event
+                {t("Edit Health Event", language)}
               </h3>
               <p className="text-sm text-muted-foreground">
-                Modify details for this health event.
+                {t("Modify details for this health event.", language)}
               </p>
             </div>
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="edit_evt_date">Date</Label>
+                <Label htmlFor="edit_evt_date">{t("Date", language)}</Label>
                 <Input
                   id="edit_evt_date"
                   type="date"
@@ -453,7 +453,7 @@ export default function HealthPage() {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_evt_type">Event Type</Label>
+                <Label htmlFor="edit_evt_type">{t("Event Type", language)}</Label>
                 <Select
                   value={editForm.event_type}
                   onValueChange={(v) =>
@@ -473,7 +473,7 @@ export default function HealthPage() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="edit_evt_details">Details</Label>
+                <Label htmlFor="edit_evt_details">{t("Details", language)}</Label>
                 <Input
                   id="edit_evt_details"
                   value={editForm.details}
@@ -490,13 +490,13 @@ export default function HealthPage() {
                   onClick={() => setEditingEvent(null)}
                   disabled={updating}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={updating}>
                   {updating && (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   )}
-                  Save Changes
+                  {t("Save Changes", language)}
                 </Button>
               </div>
             </form>

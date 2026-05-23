@@ -46,8 +46,8 @@ export function BottomNav() {
     if (newPassword !== confirmPassword) {
       toast({
         variant: "destructive",
-        title: "Mismatch",
-        description: "Passwords do not match.",
+        title: t("Mismatch", language),
+        description: t("Passwords do not match.", language),
       });
       return;
     }
@@ -56,8 +56,8 @@ export function BottomNav() {
     try {
       await api.put(`/users/${user.id}/password`, { password: newPassword });
       toast({
-        title: "Password updated",
-        description: "Your password has been changed successfully.",
+        title: t("Password updated", language),
+        description: t("Your password has been changed successfully.", language),
       });
       setShowChangePassword(false);
       setNewPassword("");
@@ -65,7 +65,7 @@ export function BottomNav() {
     } catch (err: any) {
       toast({
         variant: "destructive",
-        title: "Failed to update password",
+        title: t("Failed to update password", language),
         description: err.message,
       });
     } finally {
@@ -259,31 +259,31 @@ export function BottomNav() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
             <div>
-              <h3 className="text-lg font-bold text-foreground">Change Password</h3>
+              <h3 className="text-lg font-bold text-foreground">{t("Change Password", language)}</h3>
               <p className="text-sm text-muted-foreground">
-                Update the password for your account.
+                {t("Update the password for your account.", language)}
               </p>
             </div>
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="bottom_new_password">New Password</Label>
+                <Label htmlFor="bottom_new_password">{t("New Password", language)}</Label>
                 <Input
                   id="bottom_new_password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Min 6 characters"
+                  placeholder={t("Min 6 characters", language)}
                   required
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="bottom_confirm_password">Confirm New Password</Label>
+                <Label htmlFor="bottom_confirm_password">{t("Confirm New Password", language)}</Label>
                 <Input
                   id="bottom_confirm_password"
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Verify password"
+                  placeholder={t("Verify password", language)}
                   required
                 />
               </div>
@@ -298,11 +298,11 @@ export function BottomNav() {
                   }}
                   disabled={updating}
                 >
-                  Cancel
+                  {t("Cancel", language)}
                 </Button>
                 <Button type="submit" disabled={updating}>
                   {updating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  Change password
+                  {t("Change password", language)}
                 </Button>
               </div>
             </form>

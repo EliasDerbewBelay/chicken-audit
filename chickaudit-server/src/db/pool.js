@@ -1,9 +1,13 @@
 const { Pool } = require("pg");
 
+const dbUrl = process.env.DATABASE_URL || "";
+const isLocalhost = dbUrl.includes("localhost") || dbUrl.includes("127.0.0.1");
+const isRenderInternal = dbUrl.includes("dpg-") && !dbUrl.includes("render.com");
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  // Railway / Supabase require SSL in production
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+  connectionString: dbUrl,
+  // Render internal DBs don't support SSL. Render external DBs require it.
+  ssl: (isLocalhost || isRenderInternal) ? false : { rejectUnauthorized: false },
 });
 
 // Fail fast if the DB is unreachable at startup
