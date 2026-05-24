@@ -1,7 +1,8 @@
 const express = require("express");
 const { z } = require("zod");
 const pool = require("../db/pool");
-const { requireAuth, requireOwner } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
+const { canModifyRecord } = require("../middleware/ownership");
 const { validate } = require("../middleware/validate");
 
 const router = express.Router();
@@ -17,20 +18,15 @@ const dailyLogSchema = z.object({
 // GET /daily-logs — return all logs newest first, joined with user name
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const isOwner = req.user.role === "owner";
-    const whereClause = isOwner ? "" : "where dl.logged_by = $1";
-    const params = isOwner ? [] : [req.user.id];
-
     const { rows } = await pool.query(`
       select
         dl.*,
         u.full_name as logged_by_name
       from daily_logs dl
       join users u on u.id = dl.logged_by
-      ${whereClause}
       order by dl.log_date desc
       limit 60
-    `, params);
+    `);
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -66,7 +62,7 @@ router.put("/:id", requireAuth, validate(dailyLogSchema), async (req, res) => {
     // Check ownership
     const existing = await pool.query("select logged_by from daily_logs where id = $1", [req.params.id]);
     if (!existing.rows[0]) return res.status(404).json({ message: "Log not found" });
-    if (existing.rows[0].logged_by !== req.user.id && req.user.role !== "owner") {
+    if (!canModifyRecord(req.user, existing.rows[0].logged_by)) {
       return res.status(403).json({ message: "Not authorized to edit this log" });
     }
 
@@ -86,9 +82,16 @@ router.put("/:id", requireAuth, validate(dailyLogSchema), async (req, res) => {
   }
 });
 
-// DELETE /daily-logs/:id — owner only
-router.delete("/:id", requireAuth, requireOwner, async (req, res) => {
+// DELETE /daily-logs/:id — owner or entry creator
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
+    const existing = await pool.query("select logged_by from daily_logs where id = $1", [
+      req.params.id,
+    ]);
+    if (!existing.rows[0]) return res.status(404).json({ message: "Log not found" });
+    if (!canModifyRecord(req.user, existing.rows[0].logged_by)) {
+      return res.status(403).json({ message: "Not authorized to delete this log" });
+    }
     const { rowCount } = await pool.query("delete from daily_logs where id = $1", [req.params.id]);
     if (!rowCount) return res.status(404).json({ message: "Log not found" });
     res.json({ message: "Deleted" });

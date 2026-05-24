@@ -1,7 +1,8 @@
 const express = require("express");
 const { z } = require("zod");
 const pool = require("../db/pool");
-const { requireAuth, requireOwner } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
+const { canModifyRecord } = require("../middleware/ownership");
 const { validate } = require("../middleware/validate");
 
 const router = express.Router();
@@ -15,18 +16,13 @@ const healthSchema = z.object({
 // GET /health
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const isOwner = req.user.role === "owner";
-    const whereClause = isOwner ? "" : "where h.recorded_by = $1";
-    const params = isOwner ? [] : [req.user.id];
-
     const { rows } = await pool.query(`
       select h.*, u.full_name as recorded_by_name
       from health_events h
       join users u on u.id = h.recorded_by
-      ${whereClause}
       order by h.event_date desc, h.created_at desc
       limit 100
-    `, params);
+    `);
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -56,7 +52,7 @@ router.put("/:id", requireAuth, validate(healthSchema), async (req, res) => {
   try {
     const existing = await pool.query("select recorded_by from health_events where id=$1", [req.params.id]);
     if (!existing.rows[0]) return res.status(404).json({ message: "Event not found" });
-    if (existing.rows[0].recorded_by !== req.user.id && req.user.role !== "owner") {
+    if (!canModifyRecord(req.user, existing.rows[0].recorded_by)) {
       return res.status(403).json({ message: "Not authorized" });
     }
     const { rows } = await pool.query(
@@ -70,9 +66,16 @@ router.put("/:id", requireAuth, validate(healthSchema), async (req, res) => {
   }
 });
 
-// DELETE /health/:id — owner only
-router.delete("/:id", requireAuth, requireOwner, async (req, res) => {
+// DELETE /health/:id — owner or entry creator
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
+    const existing = await pool.query("select recorded_by from health_events where id=$1", [
+      req.params.id,
+    ]);
+    if (!existing.rows[0]) return res.status(404).json({ message: "Event not found" });
+    if (!canModifyRecord(req.user, existing.rows[0].recorded_by)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
     const { rowCount } = await pool.query("delete from health_events where id=$1", [req.params.id]);
     if (!rowCount) return res.status(404).json({ message: "Event not found" });
     res.json({ message: "Deleted" });

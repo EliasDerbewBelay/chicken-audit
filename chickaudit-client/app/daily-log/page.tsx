@@ -29,6 +29,7 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
+import { RecordActionsMenu } from "@/components/app/record-actions-menu";
 import { FloatingInput } from "@/components/ui/floating-input";
 
 export default function DailyLogPage() {
@@ -295,7 +296,7 @@ export default function DailyLogPage() {
                     <tbody>
                       <tr>
                         <td
-                          colSpan={user?.role === "owner" ? 7 : 6}
+                          colSpan={7}
                           className="p-8 text-center text-sm text-muted-foreground"
                         >
                           {searchTerm || startDate || endDate
@@ -317,9 +318,7 @@ export default function DailyLogPage() {
                         <th className="p-3">{t("Deaths", language)}</th>
                         <th className="p-3">{t("Recorded by", language)}</th>
                         <th className="p-3">{t("Notes", language)}</th>
-                        {user?.role === "owner" && (
-                          <th className="p-3 text-center">{t("Action", language)}</th>
-                        )}
+                        <th className="p-3 text-center">{t("Action", language)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -372,48 +371,24 @@ export default function DailyLogPage() {
                             <td className="p-3 max-w-[200px] truncate text-sm text-foreground">
                               {log.notes || "—"}
                             </td>
-                            {user?.role === "owner" && (
-                              <td className="p-3 text-center">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 text-xs font-medium"
-                                    >
-                                      {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => setViewingLog(log)}>
-                                      <Eye className="mr-2 w-4 h-4" />
-                                      {t("View Details", language)}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => {
-                                      setEditingLog(log);
-                                      setEditForm({
-                                        log_date: log.log_date.split('T')[0],
-                                        eggs_collected: log.eggs_collected.toString(),
-                                        feed_given_kg: log.feed_given_kg.toString(),
-                                        deaths: log.deaths.toString(),
-                                        notes: log.notes || ""
-                                      });
-                                    }}>
-                                      <Edit2 className="mr-2 w-4 h-4" />
-                                      {t("Edit", language)}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setDeletingLog(log)}
-                                      className="text-destructive focus:text-destructive cursor-pointer"
-                                    >
-                                      <Trash2 className="mr-2 w-4 h-4" />
-                                      {t("Delete", language)}
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            )}
+                            <td className="p-3 text-center">
+                              <RecordActionsMenu
+                                recordOwnerId={log.logged_by}
+                                language={language}
+                                onView={() => setViewingLog(log)}
+                                onEdit={() => {
+                                  setEditingLog(log);
+                                  setEditForm({
+                                    log_date: log.log_date.split("T")[0],
+                                    eggs_collected: log.eggs_collected.toString(),
+                                    feed_given_kg: log.feed_given_kg.toString(),
+                                    deaths: log.deaths.toString(),
+                                    notes: log.notes || "",
+                                  });
+                                }}
+                                onDelete={() => setDeletingLog(log)}
+                              />
+                            </td>
                           </tr>
                         );
                       })}

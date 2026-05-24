@@ -37,6 +37,7 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
+import { RecordActionsMenu } from "@/components/app/record-actions-menu";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { cn } from "@/lib/utils";
 
@@ -359,7 +360,7 @@ export default function HealthPage() {
                     <tbody>
                       <tr>
                         <td
-                          colSpan={user?.role === "owner" ? 6 : 5}
+                          colSpan={6}
                           className="p-8 text-center text-sm text-muted-foreground"
                         >
                           {searchTerm ||
@@ -387,9 +388,7 @@ export default function HealthPage() {
                         <th className="py-3 px-4">
                           {t("Recorded by", language)}
                         </th>
-                        {user?.role === "owner" && (
-                          <th className="py-3 px-4 text-center">{t("Action", language)}</th>
-                        )}
+                        <th className="py-3 px-4 text-center">{t("Action", language)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -420,46 +419,22 @@ export default function HealthPage() {
                           <td className="py-3 px-4 truncate max-w-[120px] text-muted-foreground">
                             {ev.recorded_by_name}
                           </td>
-                          {user?.role === "owner" && (
-                            <td className="py-3 px-4 text-center whitespace-nowrap">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-8 text-xs font-medium"
-                                  >
-                                    {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
-                                  <DropdownMenuItem onClick={() => setViewingEvent(ev)}>
-                                    <Eye className="mr-2 w-4 h-4" />
-                                    {t("View Details", language)}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={() => {
-                                    setEditingEvent(ev);
-                                    setEditForm({
-                                      event_date: ev.event_date.split('T')[0],
-                                      event_type: ev.event_type,
-                                      details: ev.details || ""
-                                    });
-                                  }}>
-                                    <Edit2 className="mr-2 w-4 h-4" />
-                                    {t("Edit", language)}
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => setDeletingEvent(ev)}
-                                    className="text-destructive focus:text-destructive cursor-pointer"
-                                  >
-                                    <Trash2 className="mr-2 w-4 h-4" />
-                                    {t("Delete", language)}
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </td>
-                          )}
+                          <td className="py-3 px-4 text-center whitespace-nowrap">
+                            <RecordActionsMenu
+                              recordOwnerId={ev.recorded_by}
+                              language={language}
+                              onView={() => setViewingEvent(ev)}
+                              onEdit={() => {
+                                setEditingEvent(ev);
+                                setEditForm({
+                                  event_date: ev.event_date.split("T")[0],
+                                  event_type: ev.event_type,
+                                  details: ev.details || "",
+                                });
+                              }}
+                              onDelete={() => setDeletingEvent(ev)}
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>

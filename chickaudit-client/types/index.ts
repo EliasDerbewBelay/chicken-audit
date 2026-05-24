@@ -75,6 +75,7 @@ export interface RecentEntry {
   description: string;
   amount?: number;
   recorded_by_name: string;
+  recorded_by?: string;
   date: string;
 }
 

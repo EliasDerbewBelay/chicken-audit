@@ -157,6 +157,7 @@ const amharicDict: Record<string, string> = {
   "Quantity": "ብዛት",
   "Reason": "ምክንያት",
   "Recent entries": "የቅርብ ጊዜ ግቤቶች",
+  "Team recent entries": "የቡድን የቅርብ ግቤቶች",
   "Recent logs": "የቅርብ ጊዜ መዝገቦች",
   "Record a new daily log entry.": "አዲስ ዕለታዊ መዝገብ ያስገቡ።",
   "Record expense": "ወጪ መዝግብ",

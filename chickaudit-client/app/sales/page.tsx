@@ -37,6 +37,7 @@ import {
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
+import { RecordActionsMenu } from "@/components/app/record-actions-menu";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { cn } from "@/lib/utils";
 
@@ -321,7 +322,7 @@ export default function SalesPage() {
                     <tbody>
                       <tr>
                         <td
-                          colSpan={user?.role === "owner" ? 7 : 6}
+                          colSpan={7}
                           className="p-8 text-center text-sm text-muted-foreground"
                         >
                           {searchTerm || startDate || endDate
@@ -343,9 +344,7 @@ export default function SalesPage() {
                         <th className="py-3 px-4 text-right">{t("Amount (ETB)", language)}</th>
                         <th className="py-3 px-4">{t("Buyer", language)}</th>
                         <th className="py-3 px-4">{t("Recorded by", language)}</th>
-                        {user?.role === "owner" && (
-                          <th className="py-3 px-4 text-center">{t("Action", language)}</th>
-                        )}
+                        <th className="py-3 px-4 text-center">{t("Action", language)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -399,48 +398,24 @@ export default function SalesPage() {
                                 {sale.recorded_by_name}
                               </span>
                             </td>
-                            {user?.role === "owner" && (
-                              <td className="py-3 px-4 text-center whitespace-nowrap">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 text-xs font-medium"
-                                    >
-                                      {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => setViewingSale(sale)}>
-                                      <Eye className="mr-2 w-4 h-4" />
-                                      {t("View Details", language)}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => {
-                                      setEditingSale(sale);
-                                      setEditForm({
-                                        sale_date: sale.sale_date.split('T')[0],
-                                        type: sale.type,
-                                        quantity: sale.quantity.toString(),
-                                        amount_etb: sale.amount_etb.toString(),
-                                        buyer: sale.buyer || ""
-                                      });
-                                    }}>
-                                      <Edit2 className="mr-2 w-4 h-4" />
-                                      {t("Edit", language)}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setDeletingSale(sale)}
-                                      className="text-destructive focus:text-destructive cursor-pointer"
-                                    >
-                                      <Trash2 className="mr-2 w-4 h-4" />
-                                      {t("Delete", language)}
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            )}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <RecordActionsMenu
+                                recordOwnerId={sale.recorded_by}
+                                language={language}
+                                onView={() => setViewingSale(sale)}
+                                onEdit={() => {
+                                  setEditingSale(sale);
+                                  setEditForm({
+                                    sale_date: sale.sale_date.split("T")[0],
+                                    type: sale.type,
+                                    quantity: sale.quantity.toString(),
+                                    amount_etb: sale.amount_etb.toString(),
+                                    buyer: sale.buyer || "",
+                                  });
+                                }}
+                                onDelete={() => setDeletingSale(sale)}
+                              />
+                            </td>
                           </tr>
                         );
                       })}

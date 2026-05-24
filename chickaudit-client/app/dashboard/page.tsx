@@ -32,8 +32,10 @@ import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
+import { RecordActionsMenu } from "@/components/app/record-actions-menu";
 import { KpiCard } from "@/components/ui/kpi-card";
 import { useToast } from "@/components/ui/toaster";
+import { canManageRecord } from "@/lib/permissions";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -67,32 +69,51 @@ export default function DashboardPage() {
       .finally(() => setLoading(false));
   }
 
-  function fetchOwnerTableData() {
-    if (!isOwner) return;
-    Promise.all([
+  function fetchActivityData() {
+    const requests: [
+      Promise<DailyLog[]>,
+      Promise<Sale[]>,
+      Promise<Expense[]>,
+      Promise<HealthEvent[]>,
+      Promise<User[] | null>,
+    ] = [
       api.get<DailyLog[]>("/daily-logs").catch(() => []),
       api.get<Sale[]>("/sales").catch(() => []),
       api.get<Expense[]>("/expenses").catch(() => []),
       api.get<HealthEvent[]>("/health").catch(() => []),
-      api.get<User[]>("/users").catch(() => []),
-    ]).then(([logsData, salesData, expensesData, healthData, usersData]) => {
-      setLogs(logsData);
-      setSales(salesData);
-      setExpenses(expensesData);
-      setHealth(healthData);
-      setUsers(usersData);
-    }).catch(console.error);
+      isOwner
+        ? api.get<User[]>("/users").catch(() => [])
+        : Promise.resolve(null),
+    ];
+
+    Promise.all(requests)
+      .then(([logsData, salesData, expensesData, healthData, usersData]) => {
+        setLogs(logsData);
+        setSales(salesData);
+        setExpenses(expensesData);
+        setHealth(healthData);
+        if (usersData) setUsers(usersData);
+      })
+      .catch(console.error);
   }
 
   useEffect(() => {
     fetchDashboardData();
-    fetchOwnerTableData();
-  }, [user]);
+    fetchActivityData();
+  }, [user, isOwner]);
 
   // Construct audit feed (All recent entries) from complete datasets
   const allRecentEntries = useMemo(() => {
-    if (!isOwner) return data?.recent_entries ?? [];
-    
+    const hasActivityData =
+      logs.length > 0 ||
+      sales.length > 0 ||
+      expenses.length > 0 ||
+      health.length > 0;
+
+    if (!hasActivityData) {
+      return data?.recent_entries ?? [];
+    }
+
     const entries: RecentEntry[] = [];
     logs.forEach((l) => {
       entries.push({
@@ -100,6 +121,7 @@ export default function DashboardPage() {
         type: "log",
         description: `${l.eggs_collected} ${t("eggs collected", language)}`,
         recorded_by_name: l.logged_by_name ?? "Employee",
+        recorded_by: l.logged_by,
         date: l.log_date,
       });
     });
@@ -110,6 +132,7 @@ export default function DashboardPage() {
         description: `${s.quantity} ${s.type === "eggs" ? t("trays", language) : t("birds", language)} ${t("sold", language)}`,
         amount: Number(s.amount_etb),
         recorded_by_name: s.recorded_by_name ?? "Employee",
+        recorded_by: s.recorded_by,
         date: s.sale_date,
       });
     });
@@ -120,6 +143,7 @@ export default function DashboardPage() {
         description: `${t(e.category, language)}: ${e.supplier || t("Farm purchase", language)}`,
         amount: Number(e.amount_etb),
         recorded_by_name: e.recorded_by_name ?? "Employee",
+        recorded_by: e.recorded_by,
         date: e.expense_date,
       });
     });
@@ -129,12 +153,13 @@ export default function DashboardPage() {
         type: "health",
         description: `${t(h.event_type, language)}: ${h.details}`,
         recorded_by_name: h.recorded_by_name ?? "Employee",
+        recorded_by: h.recorded_by,
         date: h.event_date,
       });
     });
 
     return entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [logs, sales, expenses, health, isOwner, data]);
+  }, [logs, sales, expenses, health, data, language]);
 
   // Filter recent entries client-side
   const filteredRecentEntries = useMemo(() => {
@@ -173,7 +198,7 @@ export default function DashboardPage() {
     try {
       await api.delete(url);
       fetchDashboardData();
-      fetchOwnerTableData();
+      fetchActivityData();
     } catch (err: any) {
       console.error(err);
     }
@@ -265,35 +290,22 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Grid structure depending on role */}
-      {isOwner ? (
-        <OwnerDashboardView
-          data={data}
-          eggChange={eggChange}
-          netMonth={netMonth}
-          avgEggs={avgEggs}
-          totalEggsThisWeek={totalEggsThisWeek}
-          salesThisMonthCount={salesThisMonthCount}
-          expensesThisMonthCount={expensesThisMonthCount}
-          recentEntries={data?.recent_entries ?? []}
-          allRecentEntries={allRecentEntries}
-          filteredRecentEntries={filteredRecentEntries}
-          filterType={filterType}
-          setFilterType={setFilterType}
-          onDeleteEntry={onDeleteEntry}
-          users={users}
-          setSelectedUser={setSelectedUser}
-          setViewingEntry={setViewingEntry}
-          language={language}
-        />
-      ) : (
-        <EmployeeDashboardView
-          data={data}
-          eggChange={eggChange}
-          netMonth={netMonth}
-          language={language}
-        />
-      )}
+      <MainDashboardView
+        data={data}
+        eggChange={eggChange}
+        netMonth={netMonth}
+        isOwner={isOwner}
+        currentUser={user}
+        recentEntries={allRecentEntries}
+        filteredRecentEntries={filteredRecentEntries}
+        filterType={filterType}
+        setFilterType={setFilterType}
+        onDeleteEntry={onDeleteEntry}
+        users={users}
+        setSelectedUser={setSelectedUser}
+        setViewingEntry={setViewingEntry}
+        language={language}
+      />
 
       {/* Reset Password Dialog */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => {
@@ -495,17 +507,13 @@ function formatEntryDescription(entry: RecentEntry, language: "en" | "am"): stri
   }
 }
 
-// 1. OWNER DASHBOARD VIEW
-interface OwnerViewProps {
+interface MainDashboardViewProps {
   data: any;
   eggChange: number;
   netMonth: number;
-  avgEggs: number;
-  totalEggsThisWeek: number;
-  salesThisMonthCount: number;
-  expensesThisMonthCount: number;
+  isOwner: boolean;
+  currentUser: { id: string; role: "owner" | "employee" } | null;
   recentEntries: RecentEntry[];
-  allRecentEntries: RecentEntry[];
   filteredRecentEntries: RecentEntry[];
   filterType: string;
   setFilterType: (t: any) => void;
@@ -516,16 +524,13 @@ interface OwnerViewProps {
   language: "en" | "am";
 }
 
-function OwnerDashboardView({
+function MainDashboardView({
   data,
   eggChange,
   netMonth,
-  avgEggs,
-  totalEggsThisWeek,
-  salesThisMonthCount,
-  expensesThisMonthCount,
+  isOwner,
+  currentUser,
   recentEntries,
-  allRecentEntries,
   filteredRecentEntries,
   filterType,
   setFilterType,
@@ -534,7 +539,7 @@ function OwnerDashboardView({
   setSelectedUser,
   setViewingEntry,
   language,
-}: OwnerViewProps) {
+}: MainDashboardViewProps) {
   const router = useRouter();
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -614,7 +619,9 @@ function OwnerDashboardView({
         <Card className="lg:col-span-2 flex flex-col h-[340px] overflow-hidden">
           {/* Entries header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-            <p className="text-sm font-semibold text-foreground">{t("Recent entries", language)}</p>
+            <p className="text-sm font-semibold text-foreground">
+              {isOwner ? t("Recent entries", language) : t("Team recent entries", language)}
+            </p>
             <Link href="/daily-log" className="text-xs text-primary hover:underline font-medium">{t("View all", language)}</Link>
           </div>
 
@@ -662,7 +669,7 @@ function OwnerDashboardView({
         </Card>
       </div>
 
-      {/* Row 3: Farm Activity Feed (Full-Width, Owner Only) */}
+      {/* Row 3: Farm activity feed — all users see team activity */}
       <Card className="rounded-xl border-border bg-card shadow-sm p-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
@@ -750,40 +757,26 @@ function OwnerDashboardView({
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 text-xs font-medium"
-                            >
-                              {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => setViewingEntry(entry)}>
-                              <Eye className="mr-2 w-4 h-4" />
-                              {t("View Details", language)}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => {
-                              if (entry.type === 'log') router.push('/daily-log');
-                              else if (entry.type === 'sale') router.push('/sales');
-                              else if (entry.type === 'expense') router.push('/expenses');
-                              else if (entry.type === 'health') router.push('/health');
-                            }}>
-                              <Edit2 className="mr-2 w-4 h-4" />
-                              {t("Edit", language)}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => onDeleteEntry(entry.id, entry.type)}
-                              className="text-destructive focus:text-destructive cursor-pointer"
-                            >
-                              <Trash2 className="mr-2 w-4 h-4" />
-                              {t("Delete", language)}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <RecordActionsMenu
+                          recordOwnerId={entry.recorded_by}
+                          language={language}
+                          onView={() => setViewingEntry(entry)}
+                          onEdit={
+                            canManageRecord(currentUser, entry.recorded_by)
+                              ? () => {
+                                  if (entry.type === "log") router.push("/daily-log");
+                                  else if (entry.type === "sale") router.push("/sales");
+                                  else if (entry.type === "expense") router.push("/expenses");
+                                  else if (entry.type === "health") router.push("/health");
+                                }
+                              : undefined
+                          }
+                          onDelete={
+                            canManageRecord(currentUser, entry.recorded_by)
+                              ? () => onDeleteEntry(entry.id, entry.type)
+                              : undefined
+                          }
+                        />
                       </td>
                     </tr>
                   ))
@@ -824,7 +817,8 @@ function OwnerDashboardView({
         </div>
       </Card>
 
-      {/* Row 4: Farm Accounts (Full-Width, Owner Only) */}
+      {/* Row 4: Farm accounts — owner only */}
+      {isOwner && (
       <Card className="rounded-xl border-border bg-card shadow-sm p-4">
         <div className="flex justify-between items-center mb-3">
           <h4 className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
@@ -908,97 +902,7 @@ function OwnerDashboardView({
           </div>
         </div>
       </Card>
-    </div>
-  );
-}
-
-// 2. EMPLOYEE DASHBOARD VIEW
-interface EmployeeViewProps {
-  data: any;
-  eggChange: number;
-  netMonth: number;
-  language: "en" | "am";
-}
-
-function EmployeeDashboardView({ data, eggChange, netMonth, language }: EmployeeViewProps) {
-  return (
-    <div className="space-y-4">
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <KpiCard
-          label={t("Eggs today", language)}
-          value={data?.eggs_today ?? 0}
-          trend={{ value: eggChange, label: ` ${t("vs yesterday", language)}` }}
-          icon={Egg}
-          stagger={1}
-        />
-        <KpiCard
-          label={t("Revenue", language)}
-          value={formatETB(data?.revenue_month ?? 0)}
-          trend={{ value: netMonth, label: ` ${t("Net", language)}` }}
-          color="revenue"
-          icon={DollarSign}
-          stagger={2}
-        />
-        <KpiCard
-          label={t("Expenses", language)}
-          value={formatETB(data?.expenses_month ?? 0)}
-          description={t("This month", language)}
-          color="expense"
-          icon={Activity}
-          stagger={3}
-        />
-        <KpiCard
-          label={t("Active flock", language)}
-          value={data?.active_chickens ?? 200}
-          description={`${data?.deaths_month ?? 0} ${t("deaths this month", language)}`}
-          icon={Bird}
-          stagger={4}
-        />
-      </div>
-
-      {/* Charts + recent */}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 mt-4">
-        {/* Egg production chart */}
-        <Card className="lg:col-span-3 rounded-xl border-border shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
-              {t("7-day egg production", language)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <EggProductionChart
-              data={data?.last_7_days_eggs ?? []}
-              language={language}
-              className="h-[180px]"
-            />
-          </CardContent>
-        </Card>
-
-        {/* Recent entries */}
-        <Card className="lg:col-span-2 rounded-xl border-border shadow-sm">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">{t("Your recent entries", language)}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-0 divide-y divide-border">
-            {(data?.recent_entries ?? []).slice(0, 5).map((entry: any) => (
-              <div key={entry.id} className="flex items-center justify-between py-3 gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{formatEntryDescription(entry, language)}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{entry.recorded_by_name} · {formatDate(entry.date, language)}</p>
-                </div>
-                {entry.amount !== undefined ? (
-                  <span className={`text-sm font-semibold shrink-0 ${entry.type === "sale" ? "text-[hsl(var(--revenue))]" : "text-[hsl(var(--expense))]"}`}>
-                    {entry.type === "sale" ? "+" : "−"}{formatETB(entry.amount)}
-                  </span>
-                ) : (
-                  <Badge variant="secondary" className="shrink-0 text-[10px] px-2 py-0.5 font-medium rounded-full bg-muted text-muted-foreground border-none">{t(entry.type, language)}</Badge>
-                )}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+      )}
     </div>
   );
 }

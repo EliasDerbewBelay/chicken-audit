@@ -37,6 +37,7 @@ import { Loader2, Plus, Edit2, Trash2, MoreHorizontal, ChevronDown, Eye } from "
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
+import { RecordActionsMenu } from "@/components/app/record-actions-menu";
 import { FloatingInput } from "@/components/ui/floating-input";
 import { cn } from "@/lib/utils";
 
@@ -380,7 +381,7 @@ export default function ExpensesPage() {
                     <tbody>
                       <tr>
                         <td
-                          colSpan={user?.role === "owner" ? 6 : 5}
+                          colSpan={6}
                           className="p-8 text-center text-sm text-muted-foreground"
                         >
                           {searchTerm ||
@@ -411,9 +412,7 @@ export default function ExpensesPage() {
                         <th className="py-3 px-4">
                           {t("Recorded by", language)}
                         </th>
-                        {user?.role === "owner" && (
-                          <th className="py-3 px-4 text-center">{t("Action", language)}</th>
-                        )}
+                        <th className="py-3 px-4 text-center">{t("Action", language)}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -466,47 +465,23 @@ export default function ExpensesPage() {
                                 {ex.recorded_by_name}
                               </span>
                             </td>
-                            {user?.role === "owner" && (
-                              <td className="py-3 px-4 text-center whitespace-nowrap">
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-8 text-xs font-medium"
-                                    >
-                                      {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
-                                    <DropdownMenuItem onClick={() => setViewingExpense(ex)}>
-                                      <Eye className="mr-2 w-4 h-4" />
-                                      {t("View Details", language)}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => {
-                                      setEditingExpense(ex);
-                                      setEditForm({
-                                        expense_date: ex.expense_date.split('T')[0],
-                                        category: ex.category,
-                                        amount_etb: ex.amount_etb.toString(),
-                                        supplier: ex.supplier || ""
-                                      });
-                                    }}>
-                                      <Edit2 className="mr-2 w-4 h-4" />
-                                      {t("Edit", language)}
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => setDeletingExpense(ex)}
-                                      className="text-destructive focus:text-destructive cursor-pointer"
-                                    >
-                                      <Trash2 className="mr-2 w-4 h-4" />
-                                      {t("Delete", language)}
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </td>
-                            )}
+                            <td className="py-3 px-4 text-center whitespace-nowrap">
+                              <RecordActionsMenu
+                                recordOwnerId={ex.recorded_by}
+                                language={language}
+                                onView={() => setViewingExpense(ex)}
+                                onEdit={() => {
+                                  setEditingExpense(ex);
+                                  setEditForm({
+                                    expense_date: ex.expense_date.split("T")[0],
+                                    category: ex.category,
+                                    amount_etb: ex.amount_etb.toString(),
+                                    supplier: ex.supplier || "",
+                                  });
+                                }}
+                                onDelete={() => setDeletingExpense(ex)}
+                              />
+                            </td>
                           </tr>
                         );
                       })}

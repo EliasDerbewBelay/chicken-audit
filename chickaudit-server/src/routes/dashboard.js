@@ -4,6 +4,49 @@ const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
+const RECENT_ENTRIES_QUERY = `
+  select s.id, 'sale' as type,
+         concat(s.quantity::int, ' ', s.type) as description,
+         s.amount_etb as amount,
+         u.full_name as recorded_by_name,
+         s.sale_date as date,
+         s.recorded_by
+  from sales s join users u on u.id = s.recorded_by
+
+  union all
+
+  select e.id, 'expense' as type,
+         e.category as description,
+         e.amount_etb as amount,
+         u.full_name as recorded_by_name,
+         e.expense_date as date,
+         e.recorded_by
+  from expenses e join users u on u.id = e.recorded_by
+
+  union all
+
+  select dl.id, 'log' as type,
+         concat(dl.eggs_collected, ' eggs collected') as description,
+         null as amount,
+         u.full_name as recorded_by_name,
+         dl.log_date as date,
+         dl.logged_by as recorded_by
+  from daily_logs dl join users u on u.id = dl.logged_by
+
+  union all
+
+  select h.id, 'health' as type,
+         concat(h.event_type, ': ', h.details) as description,
+         null as amount,
+         u.full_name as recorded_by_name,
+         h.event_date as date,
+         h.recorded_by
+  from health_events h join users u on u.id = h.recorded_by
+
+  order by date desc
+  limit $1
+`;
+
 // GET /dashboard
 // Returns all data the dashboard page needs in a single round-trip
 router.get("/", requireAuth, async (req, res) => {
@@ -11,106 +54,12 @@ router.get("/", requireAuth, async (req, res) => {
     const today = new Date().toISOString().split("T")[0];
     const yesterday = new Date(Date.now() - 864e5).toISOString().split("T")[0];
     const monthStart = today.slice(0, 7) + "-01";
-
-    const isOwner = req.user.role === "owner";
     const userId = req.user.id;
-    const limit = isOwner ? 10 : 7;
+    const recentLimit = req.user.role === "owner" ? 15 : 10;
 
-    const recentQuery = isOwner
-      ? `
-        select s.id, 'sale' as type,
-               concat(s.quantity::int, ' ', s.type) as description,
-               s.amount_etb as amount,
-               u.full_name as recorded_by_name,
-               s.sale_date as date,
-               s.recorded_by
-        from sales s join users u on u.id = s.recorded_by
-
-        union all
-
-        select e.id, 'expense' as type,
-               e.category as description,
-               e.amount_etb as amount,
-               u.full_name as recorded_by_name,
-               e.expense_date as date,
-               e.recorded_by
-        from expenses e join users u on u.id = e.recorded_by
-
-        union all
-
-        select dl.id, 'log' as type,
-               concat(dl.eggs_collected, ' eggs collected') as description,
-               null as amount,
-               u.full_name as recorded_by_name,
-               dl.log_date as date,
-               dl.logged_by as recorded_by
-        from daily_logs dl join users u on u.id = dl.logged_by
-
-        union all
-
-        select h.id, 'health' as type,
-               concat(h.event_type, ': ', h.details) as description,
-               null as amount,
-               u.full_name as recorded_by_name,
-               h.event_date as date,
-               h.recorded_by
-        from health_events h join users u on u.id = h.recorded_by
-
-        order by date desc
-        limit $1
-      `
-      : `
-        select s.id, 'sale' as type,
-               concat(s.quantity::int, ' ', s.type) as description,
-               s.amount_etb as amount,
-               u.full_name as recorded_by_name,
-               s.sale_date as date,
-               s.recorded_by
-        from sales s join users u on u.id = s.recorded_by
-        where s.recorded_by = $1
-
-        union all
-
-        select e.id, 'expense' as type,
-               e.category as description,
-               e.amount_etb as amount,
-               u.full_name as recorded_by_name,
-               e.expense_date as date,
-               e.recorded_by
-        from expenses e join users u on u.id = e.recorded_by
-        where e.recorded_by = $1
-
-        union all
-
-        select dl.id, 'log' as type,
-               concat(dl.eggs_collected, ' eggs collected') as description,
-               null as amount,
-               u.full_name as recorded_by_name,
-               dl.log_date as date,
-               dl.logged_by as recorded_by
-        from daily_logs dl join users u on u.id = dl.logged_by
-        where dl.logged_by = $1
-
-        union all
-
-        select h.id, 'health' as type,
-               concat(h.event_type, ': ', h.details) as description,
-               null as amount,
-               u.full_name as recorded_by_name,
-               h.event_date as date,
-               h.recorded_by
-        from health_events h join users u on u.id = h.recorded_by
-        where h.recorded_by = $1
-
-        order by date desc
-        limit $2
-      `;
-
-    const recentParams = isOwner ? [limit] : [userId, limit];
-
-    // Run all queries in parallel
     const [
       todayLog,
+      myLogToday,
       yesterdayLog,
       revenueMonth,
       expensesMonth,
@@ -120,37 +69,32 @@ router.get("/", requireAuth, async (req, res) => {
       recentEntries,
       startingFlockSetting,
     ] = await Promise.all([
-      // Eggs today
       pool.query(
-        `select coalesce(sum(eggs_collected), 0) as eggs_collected, count(id) as count_logs from daily_logs where log_date = $1 ${isOwner ? '' : 'and logged_by = $2'}`,
-        isOwner ? [today] : [today, userId]
+        `select coalesce(sum(eggs_collected), 0) as eggs_collected
+         from daily_logs where log_date = $1`,
+        [today],
       ),
-      // Eggs yesterday
       pool.query(
-        `select coalesce(sum(eggs_collected), 0) as eggs_collected from daily_logs where log_date = $1 ${isOwner ? '' : 'and logged_by = $2'}`,
-        isOwner ? [yesterday] : [yesterday, userId]
+        `select count(id)::int as count_logs from daily_logs where log_date = $1 and logged_by = $2`,
+        [today, userId],
       ),
-      // Revenue this month
       pool.query(
-        `select coalesce(sum(amount_etb), 0) as total from sales where sale_date >= $1 ${isOwner ? '' : 'and recorded_by = $2'}`,
-        isOwner ? [monthStart] : [monthStart, userId]
+        `select coalesce(sum(eggs_collected), 0) as eggs_collected from daily_logs where log_date = $1`,
+        [yesterday],
       ),
-      // Expenses this month
       pool.query(
-        `select coalesce(sum(amount_etb), 0) as total from expenses where expense_date >= $1 ${isOwner ? '' : 'and recorded_by = $2'}`,
-        isOwner ? [monthStart] : [monthStart, userId]
+        `select coalesce(sum(amount_etb), 0) as total from sales where sale_date >= $1`,
+        [monthStart],
       ),
-      // Deaths this month
       pool.query(
-        `select coalesce(sum(deaths), 0) as total from daily_logs where log_date >= $1 ${isOwner ? '' : 'and logged_by = $2'}`,
-        isOwner ? [monthStart] : [monthStart, userId]
+        `select coalesce(sum(amount_etb), 0) as total from expenses where expense_date >= $1`,
+        [monthStart],
       ),
-      // All-time deaths (for flock count)
       pool.query(
-        `select coalesce(sum(deaths), 0) as total from daily_logs ${isOwner ? '' : 'where logged_by = $1'}`,
-        isOwner ? [] : [userId]
+        `select coalesce(sum(deaths), 0) as total from daily_logs where log_date >= $1`,
+        [monthStart],
       ),
-      // Last 7 days egg production
+      pool.query(`select coalesce(sum(deaths), 0) as total from daily_logs`),
       pool.query(
         `
         select
@@ -161,13 +105,12 @@ router.get("/", requireAuth, async (req, res) => {
           current_date,
           interval '1 day'
         ) as gs(day)
-        left join daily_logs dl on dl.log_date = gs.day::date ${isOwner ? "" : "and dl.logged_by = $1"}
+        left join daily_logs dl on dl.log_date = gs.day::date
         group by gs.day
         order by gs.day
       `,
-        isOwner ? [] : [userId],
       ),
-      pool.query(recentQuery, recentParams),
+      pool.query(RECENT_ENTRIES_QUERY, [recentLimit]),
       pool.query("select value from settings where key = 'starting_flock'"),
     ]);
 
@@ -178,7 +121,7 @@ router.get("/", requireAuth, async (req, res) => {
     res.json({
       eggs_today: Number(todayLog.rows[0]?.eggs_collected ?? 0),
       eggs_yesterday: Number(yesterdayLog.rows[0]?.eggs_collected ?? 0),
-      today_log_submitted: Number(todayLog.rows[0]?.count_logs ?? 0) > 0,
+      today_log_submitted: Number(myLogToday.rows[0]?.count_logs ?? 0) > 0,
       revenue_month: Number(revenueMonth.rows[0].total),
       expenses_month: Number(expensesMonth.rows[0].total),
       deaths_month: Number(deathsMonth.rows[0].total),

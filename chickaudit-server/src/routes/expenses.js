@@ -1,7 +1,8 @@
 const express = require("express");
 const { z } = require("zod");
 const pool = require("../db/pool");
-const { requireAuth, requireOwner } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
+const { canModifyRecord } = require("../middleware/ownership");
 const { validate } = require("../middleware/validate");
 
 const router = express.Router();
@@ -16,18 +17,13 @@ const expenseSchema = z.object({
 // GET /expenses
 router.get("/", requireAuth, async (req, res) => {
   try {
-    const isOwner = req.user.role === "owner";
-    const whereClause = isOwner ? "" : "where e.recorded_by = $1";
-    const params = isOwner ? [] : [req.user.id];
-
     const { rows } = await pool.query(`
       select e.*, u.full_name as recorded_by_name
       from expenses e
       join users u on u.id = e.recorded_by
-      ${whereClause}
       order by e.expense_date desc, e.created_at desc
       limit 100
-    `, params);
+    `);
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -57,7 +53,7 @@ router.put("/:id", requireAuth, validate(expenseSchema), async (req, res) => {
   try {
     const existing = await pool.query("select recorded_by from expenses where id=$1", [req.params.id]);
     if (!existing.rows[0]) return res.status(404).json({ message: "Expense not found" });
-    if (existing.rows[0].recorded_by !== req.user.id && req.user.role !== "owner") {
+    if (!canModifyRecord(req.user, existing.rows[0].recorded_by)) {
       return res.status(403).json({ message: "Not authorized" });
     }
     const { rows } = await pool.query(
@@ -72,9 +68,16 @@ router.put("/:id", requireAuth, validate(expenseSchema), async (req, res) => {
   }
 });
 
-// DELETE /expenses/:id — owner only
-router.delete("/:id", requireAuth, requireOwner, async (req, res) => {
+// DELETE /expenses/:id — owner or entry creator
+router.delete("/:id", requireAuth, async (req, res) => {
   try {
+    const existing = await pool.query("select recorded_by from expenses where id=$1", [
+      req.params.id,
+    ]);
+    if (!existing.rows[0]) return res.status(404).json({ message: "Expense not found" });
+    if (!canModifyRecord(req.user, existing.rows[0].recorded_by)) {
+      return res.status(403).json({ message: "Not authorized" });
+    }
     const { rowCount } = await pool.query("delete from expenses where id=$1", [req.params.id]);
     if (!rowCount) return res.status(404).json({ message: "Expense not found" });
     res.json({ message: "Deleted" });
