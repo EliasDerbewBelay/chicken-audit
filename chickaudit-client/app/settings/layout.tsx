@@ -1,4 +1,3 @@
-import { AuthProvider } from "@/lib/auth-context";
 import { AppShell } from "@/components/app/app-shell";
 import type { Metadata } from "next";
 
@@ -11,9 +10,5 @@ export default function SettingsLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AuthProvider>
-      <AppShell>{children}</AppShell>
-    </AuthProvider>
-  );
+  return <AppShell>{children}</AppShell>;
 }

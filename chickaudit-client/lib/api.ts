@@ -5,7 +5,7 @@ const DEFAULT_API_URL =
 
 const BACKEND_URL = (
   process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL
-).replace(/\/+$|\/$/, "");
+).replace(/\/+$/, "");
 
 function getToken() {
   if (typeof window === "undefined") return null;

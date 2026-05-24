@@ -81,7 +81,7 @@ export interface RecentEntry {
 export interface ChickenAdjustment {
   id: string;
   date: string;
-  type: "addition" | "reduction" | "audit";
+  type: "addition" | "reduction" | "audit" | "sold";
   quantity: number;
   reason?: string;
   recorded_by?: string;
