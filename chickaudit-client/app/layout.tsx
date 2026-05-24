@@ -19,9 +19,12 @@ const playfairDisplay = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "ChickAudit",
+  title: "ChickenAudit",
   description: "Poultry farm management for the family",
   manifest: "/manifest.json",
+};
+
+export const viewport = {
   themeColor: "#2d5a3d",
 };
 
@@ -32,7 +35,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${plusJakarta.variable} ${playfairDisplay.variable} antialiased`}>
+      <body
+        className={`${plusJakarta.variable} ${playfairDisplay.variable} antialiased`}
+      >
         <LanguageProvider>
           {children}
           <Toaster />

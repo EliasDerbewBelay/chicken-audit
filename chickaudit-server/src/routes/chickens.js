@@ -35,7 +35,7 @@ router.post("/", requireAuth, async (req, res) => {
     return res.status(400).json({ message: "Quantity must be a positive number" });
   }
   
-  if (!['addition', 'reduction', 'audit'].includes(type)) {
+  if (!['addition', 'reduction', 'audit', 'sold'].includes(type)) {
     return res.status(400).json({ message: "Invalid adjustment type" });
   }
 
@@ -59,7 +59,7 @@ router.post("/", requireAuth, async (req, res) => {
 
     if (type === 'addition') {
       newStartingFlock += qty;
-    } else if (type === 'reduction') {
+    } else if (type === 'reduction' || type === 'sold') {
       newStartingFlock -= qty;
     } else if (type === 'audit') {
       // If it's an audit (a physical recount), the quantity is the absolute number of currently active chickens.

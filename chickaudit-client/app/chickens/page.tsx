@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
-import { ChickenAdjustment } from "@/types";
+import type { ChickenAdjustment } from "@/types";
 import { formatDate, cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -197,6 +197,9 @@ export default function ChickensPage() {
                         } else if (adj.type === "reduction") {
                           typeColor = "bg-[hsl(var(--expense))]/15 text-[hsl(var(--expense))]";
                           prefix = "-";
+                        } else if (adj.type === "sold") {
+                          typeColor = "bg-[hsl(var(--amber-accent))]/15 text-[hsl(var(--amber-accent))]";
+                          prefix = "-";
                         } else {
                           typeColor = "bg-primary/15 text-primary";
                           prefix = "";
@@ -226,7 +229,7 @@ export default function ChickensPage() {
                             <td className={cn(
                               "py-3 px-4 text-right font-bold tabular-nums whitespace-nowrap",
                               adj.type === "addition" ? "text-[hsl(var(--revenue))]" : 
-                              adj.type === "reduction" ? "text-[hsl(var(--expense))]" : "text-foreground"
+                              (adj.type === "reduction" || adj.type === "sold") ? "text-[hsl(var(--expense))]" : "text-foreground"
                             )}>
                               {prefix}{adj.quantity}
                             </td>
@@ -291,7 +294,8 @@ export default function ChickensPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="addition">{t("Addition (e.g. bought new chicks)", language)}</SelectItem>
-                    <SelectItem value="reduction">{t("Reduction (e.g. sold/removed)", language)}</SelectItem>
+                    <SelectItem value="reduction">{t("Reduction (e.g. lost/predator)", language)}</SelectItem>
+                    <SelectItem value="sold">{t("Sold", language)}</SelectItem>
                     <SelectItem value="audit">{t("Audit (physical recount/set exact total)", language)}</SelectItem>
                   </SelectContent>
                 </Select>

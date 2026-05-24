@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
-import { HealthEvent } from "@/types";
+import type { HealthEvent } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,22 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toaster";
-import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import { Loader2, Plus, Edit2, Trash2, MoreHorizontal, ChevronDown, Eye } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
@@ -60,6 +75,7 @@ export default function HealthPage() {
 
   // Modals/Edit state
   const [editingEvent, setEditingEvent] = useState<HealthEvent | null>(null);
+  const [viewingEvent, setViewingEvent] = useState<HealthEvent | null>(null);
   const [deletingEvent, setDeletingEvent] = useState<HealthEvent | null>(null);
 
   // Filter states
@@ -121,6 +137,7 @@ export default function HealthPage() {
     try {
       await api.post("/health", form);
       toast({ title: t("Event logged", language) });
+      setModalOpen(false);
       setForm({
         event_date: new Date().toISOString().split("T")[0],
         event_type: "death",
@@ -371,9 +388,7 @@ export default function HealthPage() {
                           {t("Recorded by", language)}
                         </th>
                         {user?.role === "owner" && (
-                          <th className="py-3 px-4 text-center">
-                            {t("Delete", language)}
-                          </th>
+                          <th className="py-3 px-4 text-center">{t("Action", language)}</th>
                         )}
                       </tr>
                     </thead>
@@ -407,13 +422,42 @@ export default function HealthPage() {
                           </td>
                           {user?.role === "owner" && (
                             <td className="py-3 px-4 text-center whitespace-nowrap">
-                              <button
-                                type="button"
-                                onClick={() => setDeletingEvent(ev)}
-                                className="opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                              >
-                                <Trash2 className="mx-auto w-4 h-4" />
-                              </button>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs font-medium"
+                                  >
+                                    {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
+                                  <DropdownMenuItem onClick={() => setViewingEvent(ev)}>
+                                    <Eye className="mr-2 w-4 h-4" />
+                                    {t("View Details", language)}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => {
+                                    setEditingEvent(ev);
+                                    setEditForm({
+                                      event_date: ev.event_date.split('T')[0],
+                                      event_type: ev.event_type,
+                                      details: ev.details || ""
+                                    });
+                                  }}>
+                                    <Edit2 className="mr-2 w-4 h-4" />
+                                    {t("Edit", language)}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => setDeletingEvent(ev)}
+                                    className="text-destructive focus:text-destructive cursor-pointer"
+                                  >
+                                    <Trash2 className="mr-2 w-4 h-4" />
+                                    {t("Delete", language)}
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </td>
                           )}
                         </tr>
@@ -427,18 +471,73 @@ export default function HealthPage() {
         </CardContent>
       </Card>
 
-      {/* Edit Modal */}
-      {editingEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground">
-                {t("Edit Health Event", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {t("Modify details for this health event.", language)}
-              </p>
+      {/* New Event Dialog */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Log Health Event", language)}</DialogTitle>
+            <DialogDescription>{t("Record a death, illness, or vaccination.", language)}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label>{t("Date", language)}</Label>
+              <Input
+                type="date"
+                value={form.event_date}
+                onChange={(e) => setForm({ ...form, event_date: e.target.value })}
+                required
+              />
             </div>
+            <div className="space-y-1.5">
+              <Label>{t("Event Type", language)}</Label>
+              <Select
+                value={form.event_type}
+                onValueChange={(v) => setForm({ ...form, event_type: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EVENT_TYPES.map((t_opt) => (
+                    <SelectItem key={t_opt.value} value={t_opt.value}>
+                      {t(t_opt.label, language)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <FloatingInput
+              label={`${t("Details", language)} (${t("optional", language)})`}
+              placeholder="..."
+              value={form.details}
+              onChange={(e) => setForm({ ...form, details: e.target.value })}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
+                {t("Cancel", language)}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t("Save event", language)}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingEvent} onOpenChange={(open) => !open && setEditingEvent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Edit Health Event", language)}</DialogTitle>
+            <DialogDescription>{t("Modify details for this health event.", language)}</DialogDescription>
+          </DialogHeader>
+          {editingEvent && (
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="edit_evt_date">{t("Date", language)}</Label>
@@ -483,7 +582,7 @@ export default function HealthPage() {
                   required
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <DialogFooter>
                 <Button
                   type="button"
                   variant="ghost"
@@ -498,47 +597,77 @@ export default function HealthPage() {
                   )}
                   {t("Save Changes", language)}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      {deletingEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-sm p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground text-destructive flex items-center gap-2">
-                <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {t("You are about to permanently delete", language)}?{" "}
-                {t("This cannot be undone", language)}.
-              </p>
+      {/* View Details Dialog */}
+      <Dialog open={!!viewingEvent} onOpenChange={(open) => !open && setViewingEvent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Event Details", language)}</DialogTitle>
+            <DialogDescription>{t("Detailed information for this health event.", language)}</DialogDescription>
+          </DialogHeader>
+          {viewingEvent && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Date", language)}</span>
+                <span className="text-sm font-medium">{formatDate(viewingEvent.event_date, language)}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Type", language)}</span>
+                <span className="text-sm font-medium capitalize">
+                  <Badge variant="outline">{t(viewingEvent.event_type, language)}</Badge>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Details", language)}</span>
+                <span className="text-sm font-medium whitespace-pre-wrap">{viewingEvent.details || "—"}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Recorded by", language)}</span>
+                <span className="text-sm font-medium">{viewingEvent.recorded_by_name || t("System", language)}</span>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setDeletingEvent(null)}
-                disabled={deleting}
-              >
-                {t("Cancel", language)}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("Delete", language)}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingEvent} onOpenChange={(open) => !open && setDeletingEvent(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
+            </DialogTitle>
+            <DialogDescription>
+              {t("You are about to permanently delete", language)}?{" "}
+              {t("This cannot be undone", language)}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeletingEvent(null)}
+              disabled={deleting}
+            >
+              {t("Cancel", language)}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t("Delete", language)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

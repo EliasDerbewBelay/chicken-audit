@@ -9,13 +9,10 @@ const BACKEND_URL = (
 
 function getToken() {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem("chickaudit_token");
+  return localStorage.getItem("chickenaudit_token");
 }
 
-function getUrl(path: string) {
-  if (typeof window !== "undefined") {
-    return `/api${path}`;
-  }
+export function getUrl(path: string) {
   return `${BACKEND_URL}${path}`;
 }
 
@@ -51,8 +48,8 @@ async function request<T>(
       (path === "/auth/login" ? "Invalid email or password" : "Unauthorized");
 
     if (token && path !== "/auth/login") {
-      localStorage.removeItem("chickaudit_token");
-      localStorage.removeItem("chickaudit_user");
+      localStorage.removeItem("chickenaudit_token");
+      localStorage.removeItem("chickenaudit_user");
       window.location.href = "/login";
       throw new Error("Session expired");
     }

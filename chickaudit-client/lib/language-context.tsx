@@ -16,7 +16,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     setIsClient(true);
-    const stored = localStorage.getItem("chickaudit-lang") as Language;
+    const stored = localStorage.getItem("chickenaudit-lang") as Language;
     if (stored === "en" || stored === "am") {
       setLanguageState(stored);
     }
@@ -24,7 +24,7 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    localStorage.setItem("chickaudit-lang", lang);
+    localStorage.setItem("chickenaudit-lang", lang);
   };
 
   // Avoid hydration mismatch by waiting for client side render but still provide context

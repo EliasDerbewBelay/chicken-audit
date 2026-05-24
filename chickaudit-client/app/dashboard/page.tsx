@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
-import { DashboardSummary, DailyLog, Sale, Expense, HealthEvent, User, RecentEntry } from "@/types";
+import type { DashboardSummary, DailyLog, Sale, Expense, HealthEvent, User, RecentEntry } from "@/types";
 import { formatETB, formatDate, cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,11 +10,25 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { EggProductionChart } from "@/components/dashboard/egg-production-chart";
+import { AlertTriangle, Egg, DollarSign, Bird, Activity, Loader2, Plus, KeyRound, Trash2, ShieldAlert, MoreHorizontal, ChevronDown, Eye, Edit2 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, ReferenceLine, CartesianGrid, LabelList,
-} from "recharts";
-import { AlertTriangle, Egg, DollarSign, Bird, Activity, Loader2, Plus, KeyRound, Trash2 } from "lucide-react";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
@@ -35,6 +49,8 @@ export default function DashboardPage() {
   const [health, setHealth] = useState<HealthEvent[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [filterType, setFilterType] = useState<"all" | "sale" | "expense" | "log" | "health">("all");
+  const [viewingEntry, setViewingEntry] = useState<RecentEntry | null>(null);
+  const router = useRouter();
 
   // Reset password modal state
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -129,7 +145,7 @@ export default function DashboardPage() {
 
   // Stat calculations
   const totalEggsThisWeek = useMemo(() => {
-    return data?.last_7_days_eggs.reduce((sum, d) => sum + d.count, 0) ?? 0;
+    return data?.last_7_days_eggs?.reduce((sum, d) => sum + d.count, 0) ?? 0;
   }, [data]);
 
   const currentMonthStr = useMemo(() => new Date().toISOString().slice(0, 7), []);
@@ -267,6 +283,7 @@ export default function DashboardPage() {
           onDeleteEntry={onDeleteEntry}
           users={users}
           setSelectedUser={setSelectedUser}
+          setViewingEntry={setViewingEntry}
           language={language}
         />
       ) : (
@@ -278,61 +295,108 @@ export default function DashboardPage() {
         />
       )}
 
-      {/* Reset Password Modal */}
-      {selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground">{t("Reset password", language)}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("Set a new password for", language)} <span className="font-semibold">{selectedUser.full_name}</span>.
-              </p>
+      {/* Reset Password Dialog */}
+      <Dialog open={!!selectedUser} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedUser(null);
+          setNewPassword("");
+          setConfirmPassword("");
+        }
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Reset password", language)}</DialogTitle>
+            <DialogDescription>
+              {t("Set a new password for", language)} <span className="font-semibold">{selectedUser?.full_name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleResetPassword} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="new_password">{t("New Password", language)}</Label>
+              <Input
+                id="new_password"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder={t("Min 6 characters", language)}
+                required
+              />
             </div>
-            <form onSubmit={handleResetPassword} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="new_password">{t("New Password", language)}</Label>
-                <Input
-                  id="new_password"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder={t("Min 6 characters", language)}
-                  required
-                />
+            <div className="space-y-1.5">
+              <Label htmlFor="confirm_password">{t("Confirm New Password", language)}</Label>
+              <Input
+                id="confirm_password"
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder={t("Verify password", language)}
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => {
+                  setSelectedUser(null);
+                  setNewPassword("");
+                  setConfirmPassword("");
+                }}
+                disabled={resetting}
+              >
+                {t("Cancel", language)}
+              </Button>
+              <Button type="submit" disabled={resetting}>
+                {resetting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t("Save password", language)}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={!!viewingEntry} onOpenChange={(open) => !open && setViewingEntry(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Entry Details", language)}</DialogTitle>
+            <DialogDescription>{t("Overview of this record.", language)}</DialogDescription>
+          </DialogHeader>
+          {viewingEntry && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Date", language)}</span>
+                <span className="text-sm font-medium">{formatDate(viewingEntry.date, language)}</span>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="confirm_password">{t("Confirm New Password", language)}</Label>
-                <Input
-                  id="confirm_password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder={t("Verify password", language)}
-                  required
-                />
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Type", language)}</span>
+                <span className="text-sm font-medium capitalize">
+                  <Badge variant="outline">{t(viewingEntry.type === 'log' ? 'Log' : viewingEntry.type, language)}</Badge>
+                </span>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setSelectedUser(null);
-                    setNewPassword("");
-                    setConfirmPassword("");
-                  }}
-                  disabled={resetting}
-                >
-                  {t("Cancel", language)}
-                </Button>
-                <Button type="submit" disabled={resetting}>
-                  {resetting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {t("Save password", language)}
-                </Button>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Description", language)}</span>
+                <span className="text-sm font-medium whitespace-pre-wrap">{viewingEntry.description}</span>
               </div>
-            </form>
-          </div>
-        </div>
-      )}
+              {viewingEntry.amount !== undefined && viewingEntry.amount !== null && (
+                <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                  <span className="text-sm text-muted-foreground">{t("Amount (ETB)", language)}</span>
+                  <span className={cn(
+                    "text-sm font-bold",
+                    viewingEntry.type === 'sale' ? "text-[hsl(var(--revenue))]" : "text-[hsl(var(--expense))]"
+                  )}>
+                    {viewingEntry.type === 'sale' ? '+' : '-'} {formatETB(viewingEntry.amount)}
+                  </span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Recorded by", language)}</span>
+                <span className="text-sm font-medium">{viewingEntry.recorded_by_name || t("System", language)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -448,6 +512,7 @@ interface OwnerViewProps {
   onDeleteEntry: (id: string, type: any) => void;
   users: User[];
   setSelectedUser: (u: User) => void;
+  setViewingEntry: (entry: RecentEntry) => void;
   language: "en" | "am";
 }
 
@@ -467,8 +532,22 @@ function OwnerDashboardView({
   onDeleteEntry,
   users,
   setSelectedUser,
+  setViewingEntry,
   language,
 }: OwnerViewProps) {
+  const router = useRouter();
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType]);
+
+  const totalPages = Math.ceil(filteredRecentEntries.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const currentEntries = filteredRecentEntries.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
   return (
     <div className="space-y-4">
       {/* Row 1: KPI cards */}
@@ -505,72 +584,29 @@ function OwnerDashboardView({
 
       {/* Row 2: Chart + Right Panel */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mt-4 items-stretch">
-        {/* Left: 7-day Egg Chart */}
+        {/* Left: 7-day egg chart */}
         <Card className="lg:col-span-3 flex flex-col h-[340px] overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between py-3 px-5 shrink-0">
-            <CardTitle className="text-sm font-semibold">{t("7-day egg production", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold">
+              {t("7-day egg production", language)}
+            </CardTitle>
             <div className="flex items-center gap-4 text-xs text-muted-foreground">
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-primary inline-block"/>
+                <span className="w-2.5 h-2.5 rounded-sm bg-primary inline-block" />
                 {t("Today", language)}
               </span>
               <span className="flex items-center gap-1.5">
-                <span className="w-2.5 h-2.5 rounded-sm bg-muted inline-block"/>
+                <span className="w-2.5 h-2.5 rounded-sm bg-muted inline-block" />
                 {t("Previous days", language)}
               </span>
             </div>
           </CardHeader>
           <CardContent className="px-2 pb-2 pt-0 flex-1 min-h-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.last_7_days_eggs ?? []} margin={{ top: 14, right: 8, left: -12, bottom: 0 }}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(d) => {
-                    try {
-                      return new Date(d).toLocaleDateString(language === "am" ? "am-ET" : "en-ET", { calendar: language === "am" ? "ethiopic" : undefined, weekday: "short" });
-                    } catch (e) {
-                      return d;
-                    }
-                  }}
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={false}
-                  tickLine={false}
-                  tickMargin={6}
-                />
-                <YAxis
-                  domain={[0, 'auto']}
-                  hide={false}
-                  width={32}
-                  tickCount={4}
-                  tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
-                  contentStyle={{
-                    background: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: 8,
-                    fontSize: 12,
-                    color: 'hsl(var(--foreground))',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                  }}
-                  formatter={(v: number) => [`${v} ${t("eggs", language)}`, '']}
-                  labelFormatter={(d) => formatDate(d, language)}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} cursor="pointer" maxBarSize={48} minPointSize={6}>
-                  <LabelList dataKey="count" position="top" style={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))', fontWeight: 500 }}/>
-                  {(data?.last_7_days_eggs ?? []).map((entry: any, i: number, arr: any[]) => (
-                    <Cell
-                      key={i}
-                      fill={i === arr.length - 1 ? "hsl(var(--primary))" : "hsl(var(--muted))"}
-                    />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <EggProductionChart
+              data={data?.last_7_days_eggs ?? []}
+              language={language}
+              className="h-full"
+            />
           </CardContent>
         </Card>
 
@@ -664,14 +700,14 @@ function OwnerDashboardView({
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
-                {filteredRecentEntries.length === 0 ? (
+                {currentEntries.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-foreground">
                       {t("No entries found matching this filter.", language)}
                     </td>
                   </tr>
                 ) : (
-                  filteredRecentEntries.map((entry) => (
+                  currentEntries.map((entry) => (
                     <tr key={entry.id} className="text-sm hover:bg-muted/30 transition-colors group">
                       <td className="px-4 py-3 text-muted-foreground">
                         {formatDate(entry.date, language).slice(0, 6)}
@@ -714,13 +750,40 @@ function OwnerDashboardView({
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <button
-                          onClick={() => onDeleteEntry(entry.id, entry.type)}
-                          className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-all duration-150 p-1.5 rounded hover:bg-muted/80"
-                          title="Delete entry"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs font-medium"
+                            >
+                              {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
+                            <DropdownMenuItem onClick={() => setViewingEntry(entry)}>
+                              <Eye className="mr-2 w-4 h-4" />
+                              {t("View Details", language)}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => {
+                              if (entry.type === 'log') router.push('/daily-log');
+                              else if (entry.type === 'sale') router.push('/sales');
+                              else if (entry.type === 'expense') router.push('/expenses');
+                              else if (entry.type === 'health') router.push('/health');
+                            }}>
+                              <Edit2 className="mr-2 w-4 h-4" />
+                              {t("Edit", language)}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => onDeleteEntry(entry.id, entry.type)}
+                              className="text-destructive focus:text-destructive cursor-pointer"
+                            >
+                              <Trash2 className="mr-2 w-4 h-4" />
+                              {t("Delete", language)}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))
@@ -728,6 +791,36 @@ function OwnerDashboardView({
               </tbody>
             </table>
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/5 rounded-b-xl shrink-0">
+              <div className="text-[10px] text-muted-foreground font-medium">
+                {t("Showing", language)} {startIndex + 1}-{Math.min(startIndex + ITEMS_PER_PAGE, filteredRecentEntries.length)} {t("of", language)} {filteredRecentEntries.length}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-6 px-2 text-[10px]"
+                >
+                  {t("Previous", language)}
+                </Button>
+                <div className="text-[10px] font-medium px-1 text-muted-foreground">
+                  {currentPage} / {totalPages}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-6 px-2 text-[10px]"
+                >
+                  {t("Next", language)}
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </Card>
 
@@ -869,37 +962,16 @@ function EmployeeDashboardView({ data, eggChange, netMonth, language }: Employee
         {/* Egg production chart */}
         <Card className="lg:col-span-3 rounded-xl border-border shadow-sm">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">{t("7-day egg production", language)}</CardTitle>
+            <CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+              {t("7-day egg production", language)}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={data?.last_7_days_eggs ?? []} barSize={28}>
-                <XAxis
-                  dataKey="date"
-                  tickFormatter={(d) => {
-                    try {
-                      return new Date(d).toLocaleDateString(language === "am" ? "am-ET" : "en-ET", { calendar: language === "am" ? "ethiopic" : undefined, weekday: "short" });
-                    } catch (e) {
-                      return d;
-                    }
-                  }}
-                  tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis hide />
-                <Tooltip
-                  formatter={(v: number) => [v, t("eggs", language)]}
-                  labelFormatter={(d) => formatDate(d, language)}
-                  contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))", color: "hsl(var(--foreground))" }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                  {(data?.last_7_days_eggs ?? []).map((entry: any, i: number, arr: any[]) => (
-                    <Cell key={i} fill={i === arr.length - 1 ? "hsl(var(--primary))" : "hsl(var(--muted))"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <EggProductionChart
+              data={data?.last_7_days_eggs ?? []}
+              language={language}
+              className="h-[180px]"
+            />
           </CardContent>
         </Card>
 

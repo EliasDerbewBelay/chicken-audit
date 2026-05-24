@@ -1,6 +1,6 @@
 {
-  "name": "ChickAudit",
-  "short_name": "ChickAudit",
+  "name": "ChickenAudit",
+  "short_name": "ChickenAudit",
   "description": "Family poultry farm management",
   "start_url": "/dashboard",
   "display": "standalone",

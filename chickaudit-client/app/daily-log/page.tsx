@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
-import { DailyLog } from "@/types";
+import type { DailyLog } from "@/types";
 import { formatDate, cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,7 +10,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/toaster";
-import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import { Loader2, Plus, Edit2, Trash2, MoreHorizontal, ChevronDown, Eye } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
@@ -32,6 +47,7 @@ export default function DailyLogPage() {
 
   // Modals/Edit state
   const [editingLog, setEditingLog] = useState<DailyLog | null>(null);
+  const [viewingLog, setViewingLog] = useState<DailyLog | null>(null);
   const [deletingLog, setDeletingLog] = useState<DailyLog | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -302,7 +318,7 @@ export default function DailyLogPage() {
                         <th className="p-3">{t("Recorded by", language)}</th>
                         <th className="p-3">{t("Notes", language)}</th>
                         {user?.role === "owner" && (
-                          <th className="p-3 text-center">{t("Delete", language)}</th>
+                          <th className="p-3 text-center">{t("Action", language)}</th>
                         )}
                       </tr>
                     </thead>
@@ -357,14 +373,45 @@ export default function DailyLogPage() {
                               {log.notes || "—"}
                             </td>
                             {user?.role === "owner" && (
-                              <td className="p-3 text-center whitespace-nowrap">
-                                <button
-                                  type="button"
-                                  onClick={() => setDeletingLog(log)}
-                                  className="opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="mx-auto w-4 h-4" />
-                                </button>
+                              <td className="p-3 text-center">
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs font-medium"
+                                    >
+                                      {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => setViewingLog(log)}>
+                                      <Eye className="mr-2 w-4 h-4" />
+                                      {t("View Details", language)}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                      setEditingLog(log);
+                                      setEditForm({
+                                        log_date: log.log_date.split('T')[0],
+                                        eggs_collected: log.eggs_collected.toString(),
+                                        feed_given_kg: log.feed_given_kg.toString(),
+                                        deaths: log.deaths.toString(),
+                                        notes: log.notes || ""
+                                      });
+                                    }}>
+                                      <Edit2 className="mr-2 w-4 h-4" />
+                                      {t("Edit", language)}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => setDeletingLog(log)}
+                                      className="text-destructive focus:text-destructive cursor-pointer"
+                                    >
+                                      <Trash2 className="mr-2 w-4 h-4" />
+                                      {t("Delete", language)}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </td>
                             )}
                           </tr>
@@ -379,103 +426,88 @@ export default function DailyLogPage() {
         </CardContent>
       </Card>
 
-      {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onMouseDown={() => setModalOpen(false)}
-        >
-          <div
-            className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div>
-              <h3 className="text-lg font-bold text-foreground">
-                {t("New entry", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {t("Record a new daily log entry.", language)}
-              </p>
-            </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <FloatingInput
-                id="log_date"
-                type="date"
-                label={t("Date", language)}
-                value={form.log_date}
-                onChange={(e) => setForm({ ...form, log_date: e.target.value })}
-                required
-              />
-              <FloatingInput
-                id="eggs"
-                type="number"
-                min="0"
-                placeholder="e.g. 162"
-                label={t("Eggs collected", language)}
-                value={form.eggs_collected}
-                onChange={(e) =>
-                  setForm({ ...form, eggs_collected: e.target.value })
-                }
-                required
-              />
-              <FloatingInput
-                id="feed"
-                type="number"
-                min="0"
-                step="0.5"
-                placeholder="e.g. 22"
-                label={t("Feed given (kg)", language)}
-                value={form.feed_given_kg}
-                onChange={(e) =>
-                  setForm({ ...form, feed_given_kg: e.target.value })
-                }
-                required
-              />
-              <FloatingInput
-                id="deaths"
-                type="number"
-                min="0"
-                label={t("Deaths", language)}
-                value={form.deaths}
-                onChange={(e) => setForm({ ...form, deaths: e.target.value })}
-              />
-              <FloatingInput
-                id="notes"
-                placeholder="..."
-                label={`${t("Notes", language)} (${t("optional", language)})`}
-                value={form.notes}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setModalOpen(false)}
-                  disabled={saving}
-                >
-                  {t("Cancel", language)}
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {t("Save log", language)}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* New Entry Dialog */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("New entry", language)}</DialogTitle>
+            <DialogDescription>{t("Record a new daily log entry.", language)}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FloatingInput
+              id="log_date"
+              type="date"
+              label={t("Date", language)}
+              value={form.log_date}
+              onChange={(e) => setForm({ ...form, log_date: e.target.value })}
+              required
+            />
+            <FloatingInput
+              id="eggs"
+              type="number"
+              min="0"
+              placeholder="e.g. 162"
+              label={t("Eggs collected", language)}
+              value={form.eggs_collected}
+              onChange={(e) =>
+                setForm({ ...form, eggs_collected: e.target.value })
+              }
+              required
+            />
+            <FloatingInput
+              id="feed"
+              type="number"
+              min="0"
+              step="0.5"
+              placeholder="e.g. 22"
+              label={t("Feed given (kg)", language)}
+              value={form.feed_given_kg}
+              onChange={(e) =>
+                setForm({ ...form, feed_given_kg: e.target.value })
+              }
+              required
+            />
+            <FloatingInput
+              id="deaths"
+              type="number"
+              min="0"
+              label={t("Deaths", language)}
+              value={form.deaths}
+              onChange={(e) => setForm({ ...form, deaths: e.target.value })}
+            />
+            <FloatingInput
+              id="notes"
+              placeholder="..."
+              label={`${t("Notes", language)} (${t("optional", language)})`}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
+                {t("Cancel", language)}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t("Save log", language)}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit Modal */}
-      {editingLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground">
-                {t("Edit Daily Log", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                {t("Modify recorded data for this day.", language)}
-              </p>
-            </div>
+      {/* Edit Dialog */}
+      <Dialog open={!!editingLog} onOpenChange={(open) => !open && setEditingLog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Edit Daily Log", language)}</DialogTitle>
+            <DialogDescription>{t("Modify recorded data for this day.", language)}</DialogDescription>
+          </DialogHeader>
+          {editingLog && (
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="edit_log_date">{t("Date", language)}</Label>
@@ -539,7 +571,7 @@ export default function DailyLogPage() {
                   }
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <DialogFooter>
                 <Button
                   type="button"
                   variant="ghost"
@@ -554,50 +586,88 @@ export default function DailyLogPage() {
                   )}
                   {t("Save Changes", language)}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      {deletingLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-sm p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground text-destructive flex items-center gap-2">
-                <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {t("You are about to permanently delete", language)}{" "}
+      {/* View Details Dialog */}
+      <Dialog open={!!viewingLog} onOpenChange={(open) => !open && setViewingLog(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Daily Log Details", language)}</DialogTitle>
+            <DialogDescription>{t("Detailed information for this daily log.", language)}</DialogDescription>
+          </DialogHeader>
+          {viewingLog && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Date", language)}</span>
+                <span className="text-sm font-medium">{formatDate(viewingLog.log_date, language)}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Eggs collected", language)}</span>
+                <span className="text-sm font-medium">{viewingLog.eggs_collected}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Feed used (kg)", language)}</span>
+                <span className="text-sm font-medium">{viewingLog.feed_given_kg}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Deaths", language)}</span>
+                <span className="text-sm font-medium text-destructive">{viewingLog.deaths}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Notes", language)}</span>
+                <span className="text-sm font-medium whitespace-pre-wrap">{viewingLog.notes || "—"}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Recorded by", language)}</span>
+                <span className="text-sm font-medium">{viewingLog.logged_by_name || t("System", language)}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingLog} onOpenChange={(open) => !open && setDeletingLog(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
+            </DialogTitle>
+            <DialogDescription>
+              {t("You are about to permanently delete", language)}{" "}
+              {deletingLog && (
                 <span className="font-semibold">
                   {formatDate(deletingLog.log_date, language)}
                 </span>
-                ? {t("This cannot be undone", language)}.
-              </p>
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setDeletingLog(null)}
-                disabled={deleting}
-              >
-                {t("Cancel", language)}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("Delete", language)}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+              )}
+              ? {t("This cannot be undone", language)}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeletingLog(null)}
+              disabled={deleting}
+            >
+              {t("Cancel", language)}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t("Delete", language)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

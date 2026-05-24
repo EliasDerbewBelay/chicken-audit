@@ -50,7 +50,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-xl bg-[#2D6A4F] flex items-center justify-center shadow-md">
               <Feather className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-2xl tracking-tight">ChickAudit</span>
+            <span className="font-semibold text-2xl tracking-tight">ChickenAudit</span>
           </div>
         </div>
 
@@ -64,7 +64,7 @@ export default function LoginPage() {
         </div>
 
         <div className="text-sm text-sidebar-fg/50 font-light">
-          &copy; {new Date().getFullYear()} ChickAudit Enterprise. All rights reserved.
+          &copy; {new Date().getFullYear()} ChickenAudit Enterprise. All rights reserved.
         </div>
       </div>
 
@@ -76,7 +76,7 @@ export default function LoginPage() {
             <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-md">
               <Feather className="w-6 h-6 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">ChickAudit</h1>
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">ChickenAudit</h1>
             <p className="text-xs text-muted-foreground">{t("Family poultry farm management", language)}</p>
           </div>
 

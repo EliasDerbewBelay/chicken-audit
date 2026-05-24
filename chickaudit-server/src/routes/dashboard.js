@@ -151,7 +151,8 @@ router.get("/", requireAuth, async (req, res) => {
         isOwner ? [] : [userId]
       ),
       // Last 7 days egg production
-      pool.query(`
+      pool.query(
+        `
         select
           gs.day::date as date,
           coalesce(sum(dl.eggs_collected), 0) as count
@@ -160,10 +161,12 @@ router.get("/", requireAuth, async (req, res) => {
           current_date,
           interval '1 day'
         ) as gs(day)
-        left join daily_logs dl on dl.log_date = gs.day::date ${isOwner ? '' : 'and dl.logged_by = $1'}
+        left join daily_logs dl on dl.log_date = gs.day::date ${isOwner ? "" : "and dl.logged_by = $1"}
         group by gs.day
         order by gs.day
-      `, isOwner ? [] : [userId]),
+      `,
+        isOwner ? [] : [userId],
+      ),
       pool.query(recentQuery, recentParams),
       pool.query("select value from settings where key = 'starting_flock'"),
     ]);

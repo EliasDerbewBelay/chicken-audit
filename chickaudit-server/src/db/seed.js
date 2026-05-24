@@ -14,19 +14,19 @@ const pool = require("./pool");
 const USERS = [
   {
     full_name: "Mr. Getnet Aycheh",       
-    email: "getnet.aycheh@chickaudit.com", 
+    email: "getnet.aycheh@chickenaudit.com", 
     password: "change_me_123",    
     role: "owner",
   },
   {
     full_name: "Mr. Derbew Belay",
-    email: "derbew.belay@chickaudit.com",
+    email: "derbew.belay@chickenaudit.com",
     password: "change_me_456",
     role: "employee",
   },
   {
     full_name: "Aklilu Derbew",
-    email: "aklilu.derbew@chickaudit.com",
+    email: "aklilu.derbew@chickenaudit.com",
     password: "change_me_789",
     role: "employee",
   },

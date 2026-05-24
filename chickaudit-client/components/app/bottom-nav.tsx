@@ -187,13 +187,12 @@ export function BottomNav() {
                 </Link>
               )}
 
-              {user?.role === "owner" && (
-                <Link
-                  href="/settings"
+              <Link
+                  href="/dashboard/settings"
                   onClick={() => setIsMoreOpen(false)}
                   className={cn(
                     "flex items-center gap-3.5 px-3 py-3 rounded-lg text-sm transition-colors",
-                    isTabActive("/settings")
+                    isTabActive("/dashboard/settings")
                       ? "bg-primary/10 text-primary font-semibold"
                       : "text-foreground hover:bg-muted"
                   )}
@@ -201,7 +200,6 @@ export function BottomNav() {
                   <Settings className="w-5 h-5 text-muted-foreground" />
                   {t("Settings", language)}
                 </Link>
-              )}
 
               <hr className="border-border my-2.5" />
 

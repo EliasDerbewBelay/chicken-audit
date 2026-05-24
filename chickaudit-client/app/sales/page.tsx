@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
-import { Sale } from "@/types";
+import type { Sale } from "@/types";
 import { formatETB, formatDate } from "@/lib/utils";
 import { useAuth } from "@/lib/auth-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +18,22 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toaster";
-import { Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import { Loader2, Plus, Edit2, Trash2, MoreHorizontal, ChevronDown, Eye } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useLanguage } from "@/lib/language-context";
 import { t } from "@/lib/translations";
 import { PageHeader } from "@/components/app/page-header";
@@ -41,6 +56,7 @@ export default function SalesPage() {
 
   // Modals/Edit state
   const [editingSale, setEditingSale] = useState<Sale | null>(null);
+  const [viewingSale, setViewingSale] = useState<Sale | null>(null);
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -328,7 +344,7 @@ export default function SalesPage() {
                         <th className="py-3 px-4">{t("Buyer", language)}</th>
                         <th className="py-3 px-4">{t("Recorded by", language)}</th>
                         {user?.role === "owner" && (
-                          <th className="py-3 px-4 text-center">{t("Delete", language)}</th>
+                          <th className="py-3 px-4 text-center">{t("Action", language)}</th>
                         )}
                       </tr>
                     </thead>
@@ -385,13 +401,44 @@ export default function SalesPage() {
                             </td>
                             {user?.role === "owner" && (
                               <td className="py-3 px-4 text-center whitespace-nowrap">
-                                <button
-                                  type="button"
-                                  onClick={() => setDeletingSale(sale)}
-                                  className="opacity-0 transition-opacity duration-200 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                                >
-                                  <Trash2 className="mx-auto w-4 h-4" />
-                                </button>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-8 text-xs font-medium"
+                                    >
+                                      {t("Options", language)} <ChevronDown className="ml-1.5 w-3 h-3" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuLabel>{t("Actions", language)}</DropdownMenuLabel>
+                                    <DropdownMenuItem onClick={() => setViewingSale(sale)}>
+                                      <Eye className="mr-2 w-4 h-4" />
+                                      {t("View Details", language)}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => {
+                                      setEditingSale(sale);
+                                      setEditForm({
+                                        sale_date: sale.sale_date.split('T')[0],
+                                        type: sale.type,
+                                        quantity: sale.quantity.toString(),
+                                        amount_etb: sale.amount_etb.toString(),
+                                        buyer: sale.buyer || ""
+                                      });
+                                    }}>
+                                      <Edit2 className="mr-2 w-4 h-4" />
+                                      {t("Edit", language)}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => setDeletingSale(sale)}
+                                      className="text-destructive focus:text-destructive cursor-pointer"
+                                    >
+                                      <Trash2 className="mr-2 w-4 h-4" />
+                                      {t("Delete", language)}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
                               </td>
                             )}
                           </tr>
@@ -406,110 +453,99 @@ export default function SalesPage() {
         </CardContent>
       </Card>
 
-      {modalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
-          onMouseDown={() => setModalOpen(false)}
-        >
-          <div
-            className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200"
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <div>
-              <h3 className="text-lg font-bold text-foreground">
-                {t("New sale", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Record a new sale entry.
-              </p>
+      {/* New Sale Dialog */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("New sale", language)}</DialogTitle>
+            <DialogDescription>Record a new sale entry.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <FloatingInput
+              type="date"
+              label={t("Date", language)}
+              value={form.sale_date}
+              onChange={(e) =>
+                setForm({ ...form, sale_date: e.target.value })
+              }
+              required
+            />
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                {t("Type", language)}
+              </Label>
+              <Select
+                value={form.type}
+                onValueChange={(v) => setForm({ ...form, type: v })}
+              >
+                <SelectTrigger className="h-12 border-input bg-card rounded-xl text-base px-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="eggs">{t("Eggs", language)}</SelectItem>
+                  <SelectItem value="broiler">
+                    {t("Broiler chickens", language)}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3.5">
               <FloatingInput
-                type="date"
-                label={t("Date", language)}
-                value={form.sale_date}
+                type="number"
+                min="0"
+                step="0.5"
+                placeholder="..."
+                label={t("Quantity", language)}
+                value={form.quantity}
                 onChange={(e) =>
-                  setForm({ ...form, sale_date: e.target.value })
+                  setForm({ ...form, quantity: e.target.value })
                 }
                 required
               />
-              <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">
-                  {t("Type", language)}
-                </Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) => setForm({ ...form, type: v })}
-                >
-                  <SelectTrigger className="h-12 border-input bg-card rounded-xl text-base px-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="eggs">{t("Eggs", language)}</SelectItem>
-                    <SelectItem value="broiler">
-                      {t("Broiler chickens", language)}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-3.5">
-                <FloatingInput
-                  type="number"
-                  min="0"
-                  step="0.5"
-                  placeholder="..."
-                  label={t("Quantity", language)}
-                  value={form.quantity}
-                  onChange={(e) =>
-                    setForm({ ...form, quantity: e.target.value })
-                  }
-                  required
-                />
-                <FloatingInput
-                  type="number"
-                  min="0"
-                  placeholder="..."
-                  label={t("Amount (ETB)", language)}
-                  value={form.amount_etb}
-                  onChange={(e) =>
-                    setForm({ ...form, amount_etb: e.target.value })
-                  }
-                  required
-                />
-              </div>
               <FloatingInput
+                type="number"
+                min="0"
                 placeholder="..."
-                label={`${t("Buyer", language)} (${t("optional", language)})`}
-                value={form.buyer}
-                onChange={(e) => setForm({ ...form, buyer: e.target.value })}
+                label={t("Amount (ETB)", language)}
+                value={form.amount_etb}
+                onChange={(e) =>
+                  setForm({ ...form, amount_etb: e.target.value })
+                }
+                required
               />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setModalOpen(false)}
-                  disabled={saving}
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={saving}>
-                  {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                  {t("Save sale", language)}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      {editingSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-md p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground">{t("Edit Sale", language)}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t("Modify recorded data for this sale.", language)}
-              </p>
             </div>
+            <FloatingInput
+              placeholder="..."
+              label={`${t("Buyer", language)} (${t("optional", language)})`}
+              value={form.buyer}
+              onChange={(e) => setForm({ ...form, buyer: e.target.value })}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setModalOpen(false)}
+                disabled={saving}
+              >
+                {t("Cancel", language)}
+              </Button>
+              <Button type="submit" disabled={saving}>
+                {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                {t("Save sale", language)}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Sale Dialog */}
+      <Dialog open={!!editingSale} onOpenChange={(open) => !open && setEditingSale(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Edit Sale", language)}</DialogTitle>
+            <DialogDescription>{t("Modify recorded data for this sale.", language)}</DialogDescription>
+          </DialogHeader>
+          {editingSale && (
             <form onSubmit={handleUpdate} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="edit_sale_date">{t("Date", language)}</Label>
@@ -577,7 +613,7 @@ export default function SalesPage() {
                   }
                 />
               </div>
-              <div className="flex justify-end gap-2 pt-2">
+              <DialogFooter>
                 <Button
                   type="button"
                   variant="ghost"
@@ -592,47 +628,85 @@ export default function SalesPage() {
                   )}
                   {t("Save Changes", language)}
                 </Button>
-              </div>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Delete Confirmation Modal */}
-      {deletingSale && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-card w-full max-w-sm p-6 rounded-xl border border-border shadow-lg space-y-4 animate-in fade-in zoom-in duration-200">
-            <div>
-              <h3 className="text-lg font-bold text-foreground text-destructive flex items-center gap-2">
-                <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
-              </h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {t("You are about to permanently delete", language)}?{" "}
-                {t("This cannot be undone", language)}.
-              </p>
+      {/* View Details Dialog */}
+      <Dialog open={!!viewingSale} onOpenChange={(open) => !open && setViewingSale(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{t("Sale Details", language)}</DialogTitle>
+            <DialogDescription>{t("Detailed information for this sale record.", language)}</DialogDescription>
+          </DialogHeader>
+          {viewingSale && (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Date", language)}</span>
+                <span className="text-sm font-medium">{formatDate(viewingSale.sale_date, language)}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Type", language)}</span>
+                <span className="text-sm font-medium capitalize">
+                  <Badge variant="outline">{t(viewingSale.type, language)}</Badge>
+                </span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Quantity", language)}</span>
+                <span className="text-sm font-medium">{viewingSale.quantity}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Amount (ETB)", language)}</span>
+                <span className="text-sm font-bold text-[hsl(var(--revenue))]">{formatETB(viewingSale.amount_etb)}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Buyer", language)}</span>
+                <span className="text-sm font-medium">{viewingSale.buyer || "—"}</span>
+              </div>
+              <div className="grid grid-cols-2 py-2 border-b border-border/50">
+                <span className="text-sm text-muted-foreground">{t("Recorded by", language)}</span>
+                <span className="text-sm font-medium">{viewingSale.recorded_by_name || t("System", language)}</span>
+              </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setDeletingSale(null)}
-                disabled={deleting}
-              >
-                {t("Cancel", language)}
-              </Button>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDelete}
-                disabled={deleting}
-              >
-                {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {t("Delete", language)}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={!!deletingSale} onOpenChange={(open) => !open && setDeletingSale(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-destructive flex items-center gap-2">
+              <Trash2 className="w-5 h-5" /> {t("Delete entry", language)}
+            </DialogTitle>
+            <DialogDescription>
+              {t("You are about to permanently delete", language)}?{" "}
+              {t("This cannot be undone", language)}.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setDeletingSale(null)}
+              disabled={deleting}
+            >
+              {t("Cancel", language)}
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+              {t("Delete", language)}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

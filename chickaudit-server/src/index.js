@@ -12,6 +12,7 @@ const healthRoutes = require("./routes/health");
 const userRoutes = require("./routes/users");
 const settingsRoutes = require("./routes/settings");
 const chickensRoutes = require("./routes/chickens");
+const exportRoutes = require("./routes/export");
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/health", healthRoutes);
 app.use("/users", userRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/chickens", chickensRoutes);
+app.use("/export", exportRoutes);
 
 // Health check (used by Railway)
 app.get("/ping", (_req, res) => res.json({ ok: true }));
@@ -69,20 +71,31 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-// Auto-run migrations on startup
+// Auto-run migrations on startup only when explicitly enabled
 const { execSync } = require("child_process");
-try {
-  console.log("Running migrations...");
-  execSync("node src/db/migrate.js", { stdio: "inherit" });
-  console.log("Migrations complete.");
-} catch (err) {
-  console.error("Migration failed:", err.message);
+const autoMigrate =
+  process.env.AUTO_MIGRATE === "true" || process.env.NODE_ENV !== "production";
+const autoSeed = process.env.AUTO_SEED === "true";
+
+if (autoMigrate) {
+  try {
+    console.log("Running migrations...");
+    execSync("node src/db/migrate.js", { stdio: "inherit" });
+    console.log("Migrations complete.");
+  } catch (err) {
+    console.error("Migration failed:", err.message);
+    process.exit(1);
+  }
+} else {
+  console.log(
+    "Skipping automatic migrations. Set AUTO_MIGRATE=true to enable.",
+  );
 }
-// Run seed if users table is empty
+
 async function seedIfEmpty() {
   try {
     const { rows } = await pool.query("SELECT COUNT(*) as count FROM users");
-    if (parseInt(rows[0].count) === 0) {
+    if (parseInt(rows[0].count, 10) === 0) {
       execSync("node src/db/seed.js", { stdio: "inherit" });
       console.log("Seed complete.");
     }
@@ -90,11 +103,16 @@ async function seedIfEmpty() {
     console.error("Seed check failed:", err.message);
   }
 }
-seedIfEmpty();
+
+if (autoSeed) {
+  seedIfEmpty();
+} else {
+  console.log("Skipping automatic seeding. Set AUTO_SEED=true to enable.");
+}
 
 // ── Start ───────────────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {
-  console.log(`🐔  ChickAudit API running on http://localhost:${PORT}`);
+  console.log(`🐔  ChickenAudit API running on http://localhost:${PORT}`);
 });
 // Nodemon trigger 2

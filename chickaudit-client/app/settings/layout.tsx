@@ -3,7 +3,7 @@ import { AppShell } from "@/components/app/app-shell";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Settings - ChickAudit",
+  title: "Settings - ChickenAudit",
 };
 
 export default function SettingsLayout({

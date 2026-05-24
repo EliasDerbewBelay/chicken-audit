@@ -13,6 +13,7 @@ import { api } from "@/lib/api";
 interface User {
   id: string;
   full_name: string;
+  email?: string;
   role: "owner" | "employee";
 }
 
@@ -21,6 +22,7 @@ interface AuthContextType {
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => void;
+  setUser: (u: User) => void;
   isLoading: boolean;
   isOwner: boolean;
 }
@@ -34,8 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    const stored = localStorage.getItem("chickaudit_token");
-    const storedUser = localStorage.getItem("chickaudit_user");
+    const stored = localStorage.getItem("chickenaudit_token");
+    const storedUser = localStorage.getItem("chickenaudit_user");
     if (stored && storedUser) {
       setToken(stored);
       setUser(JSON.parse(storedUser));
@@ -49,8 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         "/auth/login",
         { email, password }
       );
-      localStorage.setItem("chickaudit_token", data.token);
-      localStorage.setItem("chickaudit_user", JSON.stringify(data.user));
+      localStorage.setItem("chickenaudit_token", data.token);
+      localStorage.setItem("chickenaudit_user", JSON.stringify(data.user));
       setToken(data.token);
       setUser(data.user);
       router.push("/dashboard");
@@ -59,8 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(() => {
-    localStorage.removeItem("chickaudit_token");
-    localStorage.removeItem("chickaudit_user");
+    localStorage.removeItem("chickenaudit_token");
+    localStorage.removeItem("chickenaudit_user");
     setToken(null);
     setUser(null);
     router.push("/login");
@@ -73,6 +75,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         login,
         logout,
+        setUser: (u: User) => {
+          setUser(u);
+          localStorage.setItem("chickenaudit_user", JSON.stringify(u));
+        },
         isLoading,
         isOwner: user?.role === "owner",
       }}
