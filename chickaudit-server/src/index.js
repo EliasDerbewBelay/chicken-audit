@@ -2,6 +2,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const pool = require("./db/pool");
+const { verifyConnection } = require("./db/pool");
 
 const authRoutes = require("./routes/auth");
 const dashboardRoutes = require("./routes/dashboard");
@@ -15,6 +16,16 @@ const chickensRoutes = require("./routes/chickens");
 const exportRoutes = require("./routes/export");
 
 const app = express();
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction && !process.env.JWT_SECRET) {
+  console.error("JWT_SECRET is required when NODE_ENV=production");
+  process.exit(1);
+}
+
+if (isProduction) {
+  app.set("trust proxy", 1);
+}
 
 // ── Middleware ──────────────────────────────────────────────
 const rawClientOrigins = process.env.CLIENT_ORIGIN || "http://localhost:3000";
@@ -22,6 +33,12 @@ const clientOrigins = rawClientOrigins
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+if (isProduction && clientOrigins.includes("*")) {
+  console.warn(
+    "Warning: CLIENT_ORIGIN=* allows any origin. Set an explicit frontend URL in production.",
+  );
+}
 
 app.use(
   cors({
@@ -37,10 +54,10 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 // Request logger in development
-if (process.env.NODE_ENV !== "production") {
+if (!isProduction) {
   app.use((req, _res, next) => {
     console.log(`${req.method} ${req.path}`);
     next();
@@ -59,8 +76,16 @@ app.use("/settings", settingsRoutes);
 app.use("/chickens", chickensRoutes);
 app.use("/export", exportRoutes);
 
-// Health check (used by Railway)
-app.get("/ping", (_req, res) => res.json({ ok: true }));
+// Health check (used by deploy platforms)
+app.get("/ping", async (_req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ ok: true, database: "connected" });
+  } catch (err) {
+    console.error("Health check failed:", err.message);
+    res.status(503).json({ ok: false, database: "disconnected" });
+  }
+});
 
 // 404 handler
 app.use((_req, res) => res.status(404).json({ message: "Route not found" }));
@@ -71,28 +96,36 @@ app.use((err, _req, res, _next) => {
   res.status(500).json({ message: "Internal server error" });
 });
 
-// Auto-run migrations on startup only when explicitly enabled
 const { execSync } = require("child_process");
 const autoMigrate =
-  process.env.AUTO_MIGRATE === "true" || process.env.NODE_ENV !== "production";
+  process.env.AUTO_MIGRATE === "true" ||
+  (!isProduction && process.env.AUTO_MIGRATE !== "false");
 const autoSeed = process.env.AUTO_SEED === "true";
 
-if (autoMigrate) {
+async function runMigrations() {
+  if (!autoMigrate) {
+    console.log(
+      "Skipping automatic migrations. Set AUTO_MIGRATE=true to enable.",
+    );
+    return;
+  }
+
   try {
     console.log("Running migrations...");
     execSync("node src/db/migrate.js", { stdio: "inherit" });
     console.log("Migrations complete.");
   } catch (err) {
     console.error("Migration failed:", err.message);
-    process.exit(1);
+    throw err;
   }
-} else {
-  console.log(
-    "Skipping automatic migrations. Set AUTO_MIGRATE=true to enable.",
-  );
 }
 
 async function seedIfEmpty() {
+  if (!autoSeed) {
+    console.log("Skipping automatic seeding. Set AUTO_SEED=true to enable.");
+    return;
+  }
+
   try {
     const { rows } = await pool.query("SELECT COUNT(*) as count FROM users");
     if (parseInt(rows[0].count, 10) === 0) {
@@ -101,18 +134,48 @@ async function seedIfEmpty() {
     }
   } catch (err) {
     console.error("Seed check failed:", err.message);
+    throw err;
   }
 }
 
-if (autoSeed) {
-  seedIfEmpty();
-} else {
-  console.log("Skipping automatic seeding. Set AUTO_SEED=true to enable.");
+let server;
+
+async function start() {
+  try {
+    await verifyConnection();
+    console.log("Database connected");
+
+    await runMigrations();
+    await seedIfEmpty();
+
+    const PORT = process.env.PORT || 4000;
+    server = app.listen(PORT, () => {
+      console.log(`ChickenAudit API running on port ${PORT}`);
+    });
+    server.on("error", (err) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`Port ${PORT} is already in use`);
+      } else {
+        console.error("Server failed to listen:", err.message);
+      }
+      process.exit(1);
+    });
+  } catch (err) {
+    console.error("Failed to start server:", err.message);
+    process.exit(1);
+  }
 }
 
-// ── Start ───────────────────────────────────────────────────
-const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(`🐔  ChickenAudit API running on http://localhost:${PORT}`);
-});
-// Nodemon trigger 2
+async function shutdown(signal) {
+  console.log(`Received ${signal}, shutting down...`);
+  if (server) {
+    await new Promise((resolve) => server.close(resolve));
+  }
+  await pool.end();
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+start();

@@ -8,7 +8,11 @@ function requireAuth(req, res, next) {
 
   const token = header.slice(7);
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || "fallback_secret_please_change_in_production");
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ message: "Server misconfigured" });
+    }
+    const payload = jwt.verify(token, secret);
     req.user = payload; // { id, full_name, role }
     next();
   } catch {

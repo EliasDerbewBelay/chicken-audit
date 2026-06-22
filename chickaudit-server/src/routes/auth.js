@@ -33,9 +33,13 @@ router.post("/login", validate(loginSchema), async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      return res.status(500).json({ message: "Server misconfigured" });
+    }
     const token = jwt.sign(
       { id: user.id, full_name: user.full_name, role: user.role },
-      process.env.JWT_SECRET || "fallback_secret_please_change_in_production",
+      secret,
       { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
     );
 
